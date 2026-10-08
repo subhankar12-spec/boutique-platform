@@ -1,0 +1,17 @@
+{
+  "github_owner": "subhankar12-spec",
+  "repositories": [
+    "boutique-frontend",
+    "boutique-catalogue",
+    "boutique-cart",
+    "boutique-orders",
+    "boutique-ci",
+    "boutique-infrastructure",
+    "boutique-gitops",
+    "boutique-platform"
+  ],
+  "deployment_tracks": [
+    "homelab",
+    "aws-reference"
+  ]
+}

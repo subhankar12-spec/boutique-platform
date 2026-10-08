@@ -1,0 +1,35 @@
+{
+  "folders": [
+    {
+      "path": "../../boutique-frontend"
+    },
+    {
+      "path": "../../boutique-catalogue"
+    },
+    {
+      "path": "../../boutique-cart"
+    },
+    {
+      "path": "../../boutique-orders"
+    },
+    {
+      "path": "../../boutique-ci"
+    },
+    {
+      "path": "../../boutique-infrastructure"
+    },
+    {
+      "path": "../../boutique-gitops"
+    },
+    {
+      "path": "../../boutique-platform"
+    }
+  ],
+  "settings": {
+    "files.exclude": {
+      "**/.terraform": true,
+      "**/target": true,
+      "**/__pycache__": true
+    }
+  }
+}
