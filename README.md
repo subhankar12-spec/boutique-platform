@@ -7,3 +7,7 @@ Use `scripts/install-tools.sh` for checksum-verified Linux amd64 CLI installatio
 Local namespace deployments are direct bootstrap exercises. Once separate repositories exist, install Argo CD and use its Applications for GitOps reconciliation. Do not leave two deployment mechanisms managing the same resources.
 
 See docs for Jenkins, AWS, runtime limitations and runbooks.
+
+## Observability and incident delivery
+
+See [monitoring setup and runbooks](docs/monitoring.md). Includes Prometheus, Grafana dashboards, Alertmanager Slack routing, a durable ServiceNow ITSM adapter, Loki/Alloy logs, local mock delivery tests, and separate Kubernetes scrape profiles. The trusted release job also builds the incident adapter from this repository. HA monitoring is a separate reference, not a property of the affordable single-replica stack.

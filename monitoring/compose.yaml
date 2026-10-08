@@ -1,0 +1,117 @@
+services:
+  prometheus:
+    image: prom/prometheus@sha256:efd719c99d83b060d9daefdcf00360461adf279f45ef5391f8d111892118753e
+    command:
+    - --config.file=/etc/prometheus/prometheus.yml
+    - --storage.tsdb.path=/prometheus
+    - --storage.tsdb.retention.time=7d
+    ports:
+    - 127.0.0.1:9090:9090
+    volumes:
+    - ../monitoring/prometheus-local.yml:/etc/prometheus/prometheus.yml:ro
+    - ../monitoring/rules.yml:/etc/prometheus/rules.yml:ro
+    - prometheus-data:/prometheus
+    environment:
+      NO_PROXY: '*'
+      no_proxy: '*'
+  alertmanager:
+    image: prom/alertmanager@sha256:e9733bafb1bdef9b00e25a21f8f99dc26a22224bf16641ad754d1649f4c3357a
+    command:
+    - --config.file=/etc/alertmanager/alertmanager.yml
+    - --storage.path=/alertmanager
+    ports:
+    - 127.0.0.1:9093:9093
+    volumes:
+    - ../monitoring/alertmanager-local.yml:/etc/alertmanager/alertmanager.yml:ro
+    - ../monitoring/.secrets/slack_webhook:/run/secrets/slack_webhook:ro
+    - ../monitoring/.secrets/webhook_token:/run/secrets/webhook_token:ro
+    - alertmanager-data:/alertmanager
+    environment:
+      NO_PROXY: '*'
+      no_proxy: '*'
+  incident-bridge:
+    build: ../monitoring/incident-bridge
+    environment:
+      QUEUE_PATH: /data/queue.db
+      WEBHOOK_TOKEN_FILE: /run/secrets/webhook_token
+      SERVICENOW_URL: http://mock-receivers:18080
+      SERVICENOW_USERNAME: local-mock
+      SERVICENOW_PASSWORD_FILE: /run/secrets/servicenow_password
+      ALLOW_HTTP_MOCK: 'true'
+      NO_PROXY: '*'
+      no_proxy: '*'
+    volumes:
+    - ../monitoring/.secrets/webhook_token:/run/secrets/webhook_token:ro
+    - ../monitoring/.secrets/servicenow_password:/run/secrets/servicenow_password:ro
+    - incident-data:/data
+    read_only: true
+    cap_drop:
+    - ALL
+    security_opt:
+    - no-new-privileges:true
+  mock-receivers:
+    image: python@sha256:05cda9777409a9c3ffddd94a4c476b79f0769a0b4857f0c7ed9226b6800b0d6f
+    command:
+    - python
+    - /app/mock-receivers.py
+    user: 65532:65532
+    environment:
+      PYTHONDONTWRITEBYTECODE: '1'
+      NO_PROXY: '*'
+      no_proxy: '*'
+    ports:
+    - 127.0.0.1:18080:18080
+    volumes:
+    - ../monitoring/mock-receivers.py:/app/mock-receivers.py:ro
+    read_only: true
+    cap_drop:
+    - ALL
+    security_opt:
+    - no-new-privileges:true
+  loki:
+    image: grafana/loki@sha256:1107dd5274e0ada47e42472b7a7e71f3b2a2fe878878108f3e2f9e51528f0193
+    command:
+    - -config.file=/etc/loki/config.yml
+    volumes:
+    - ../monitoring/loki.yml:/etc/loki/config.yml:ro
+    - loki-data:/loki
+    environment:
+      NO_PROXY: '*'
+      no_proxy: '*'
+  alloy:
+    image: grafana/alloy@sha256:2aa2099af76c0098d4af7a4d6e48f86cb66dc1a000222ad927a1c67c6542d13f
+    command:
+    - run
+    - /etc/alloy/config.alloy
+    - --storage.path=/var/lib/alloy
+    volumes:
+    - ../monitoring/alloy-local.alloy:/etc/alloy/config.alloy:ro
+    - ../monitoring/logs:/logs:ro
+    - alloy-data:/var/lib/alloy
+    environment:
+      NO_PROXY: '*'
+      no_proxy: '*'
+  grafana:
+    image: grafana/grafana@sha256:b28bae15e219c998fb0e0424ed724930cc61b1f61fb404d47c862f9a23f9e572
+    ports:
+    - 127.0.0.1:8085:3000
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD__FILE: /run/secrets/grafana_password
+      GF_USERS_ALLOW_SIGN_UP: 'false'
+      GF_AUTH_ANONYMOUS_ENABLED: 'false'
+      GF_ANALYTICS_REPORTING_ENABLED: 'false'
+      GF_ANALYTICS_CHECK_FOR_UPDATES: 'false'
+      NO_PROXY: '*'
+      no_proxy: '*'
+    volumes:
+    - ../monitoring/.secrets/grafana_password:/run/secrets/grafana_password:ro
+    - ../monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+    - ../monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    - grafana-data:/var/lib/grafana
+volumes:
+  prometheus-data: null
+  alertmanager-data: null
+  incident-data: null
+  loki-data: null
+  alloy-data: null
+  grafana-data: null

@@ -1,0 +1,23 @@
+rule_files: [rules.yml]
+evaluation_interval: 1m
+tests:
+  - interval: 1m
+    input_series:
+      - series: 'up{job="boutique",instance="frontend:8080",service="frontend",environment="dev",cluster="local"}'
+        values: '0 0 0 0 0 0'
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: BoutiqueServiceDown
+        exp_alerts:
+          - exp_labels: {job: boutique, instance: 'frontend:8080', service: frontend, environment: dev, cluster: local, severity: critical}
+            exp_annotations:
+              summary: 'frontend is unavailable in dev'
+              runbook_url: https://github.com/subhankar12-spec/boutique-platform/blob/main/docs/monitoring.md#service-down
+  - interval: 1m
+    input_series:
+      - series: 'up{job="boutique",service="frontend"}'
+        values: '1 0 1 1'
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: BoutiqueServiceDown
+        exp_alerts: []

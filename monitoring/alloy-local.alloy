@@ -1,0 +1,15 @@
+local.file_match "boutique" {
+  path_targets = [
+    {__path__ = "/logs/frontend.log", service = "frontend", environment = "dev", cluster = "local"},
+    {__path__ = "/logs/catalogue.log", service = "catalogue", environment = "dev", cluster = "local"},
+    {__path__ = "/logs/cart.log", service = "cart", environment = "dev", cluster = "local"},
+    {__path__ = "/logs/orders.log", service = "orders", environment = "dev", cluster = "local"},
+  ]
+}
+loki.source.file "boutique" {
+  targets = local.file_match.boutique.targets
+  forward_to = [loki.write.default.receiver]
+}
+loki.write "default" {
+  endpoint { url = "http://loki:3100/loki/api/v1/push" }
+}

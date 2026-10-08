@@ -2,3 +2,9 @@ local/.env
 *.log
 __pycache__/
 .tools/
+
+monitoring/.secrets/
+monitoring/logs/
+*.db
+*.db-shm
+*.db-wal

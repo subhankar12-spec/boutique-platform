@@ -26,3 +26,13 @@ Validated in the current cloud instance on 2026-10-08. This does not establish r
 - The official RDS truststore endpoint returned network-policy 403. Fetch, review and commit the bundle before the trusted orders release. TLS verification was not disabled.
 - Required network domains and Compose startup instructions were saved in the environment draft. Saving does not apply/publish those settings or validate a new task. Review/save and publish through environment settings when you want that configuration activated.
 - The app intentionally omits account authentication, real payments, inventory reservation, centralized log storage, tracing and automatic signed release attestation enforcement. It is a serious learning baseline, not a claim of production readiness.
+
+## Observability extension validation
+
+Locally verified: seven incident adapter tests (durable retry, deduplication, resolution ordering, lost-response lookup, scripted request mapping and webhook authentication/rotation); two promtool alert-rule scenarios; Prometheus/Alertmanager/Alloy configuration checks; Grafana 13.2.3 startup, ten-panel dashboard provisioning and both datasource UIDs; real Alloy-to-Loki application log delivery; mock Slack firing/resolution and ServiceNow creation/resolution with duplicate firing; rebuilt app tests and functional checkout smoke. The Java fractional SLO boundary was corrected to `2500ms` after the live startup check rejected `2.5s`.
+
+All monitoring profiles are rendered and checked with strict Kubernetes schemas. These checks do not establish a working Kubernetes deployment or HA behavior. The ServiceNow scripted resource is a reference, tested only at its adapter request boundary, not inside ServiceNow. The Prometheus Operator Helm reference is not rendered/deployed: downloads from `get.helm.sh` and `prometheus-community.github.io` were blocked by the current network policy; their additions are saved in the environment draft.
+
+This runner's VFS Docker driver consumes full image copies during builds/container creation. Grafana was validated separately, then its container/image removed to preserve disk for app/Alloy tests; its data volume and credentials were preserved. Run the full simultaneous stack on a Docker host with enough storage. No live receiver credentials are present, and no real notifications or incidents were sent.
+
+Final monitoring schema counts: homelab 32, nonprod 34, production 32 valid resources, none invalid/skipped. The adapter image has no fixable HIGH/CRITICAL findings under the configured Trivy gate; source-only secret scanning of all eight repositories found no HIGH/CRITICAL secrets. Live receiver activation and production HA deployment remain unverified.

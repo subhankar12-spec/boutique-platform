@@ -70,3 +70,5 @@ See `boutique-platform/docs/validation.md` for exact checks and limitations. A f
 3. `boutique-gitops/README.md`
 4. `boutique-infrastructure/README.md`
 5. `boutique-platform/docs/runbooks/`
+
+Observability includes Grafana dashboards, per-pod Prometheus discovery, Alertmanager Slack/ServiceNow routing, a durable incident adapter, Loki/Alloy collection and local mock drills. See boutique-platform/docs/monitoring.md for activation and limitations. The default stack is affordable and single replica; production HA is a separate undeployed reference.
