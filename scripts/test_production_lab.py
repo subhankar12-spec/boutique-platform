@@ -40,7 +40,19 @@ class ProductionLabSafety(unittest.TestCase):
         self.assertEqual(project['spec']['destinations'], [{'namespace': 'boutique-production', 'server': 'https://kubernetes.default.svc'}])
         self.assertEqual(project['spec']['clusterResourceWhitelist'], [{'group': '', 'kind': 'Namespace'}])
         project, _ = lab.argo_application('production', 'production', monitoring=True)
-        self.assertEqual({x['namespace'] for x in project['spec']['destinations']}, {'monitoring', 'monitoring-logs'})
+        self.assertEqual({x['namespace'] for x in project['spec']['destinations']}, {'monitoring', 'monitoring-logs', 'boutique-production'})
+
+    def test_monitoring_uses_shared_helm_chart_with_cluster_and_lab_values(self):
+        for cluster in ('nonprod','production'):
+            project,app=lab.argo_application(cluster,'production' if cluster=='production' else 'dev',monitoring=True)
+            self.assertEqual(app['spec']['source']['path'],'monitoring')
+            self.assertEqual({d['namespace'] for d in project['spec']['destinations']},{'monitoring','monitoring-logs'}|{'boutique-'+e for e in lab.CLUSTERS[cluster]})
+            self.assertEqual(project['spec']['clusterResourceWhitelist'],[{'group':'','kind':'Namespace'}])
+            self.assertEqual(app['spec']['source']['helm'],{'releaseName':'lab-monitoring-'+cluster,'valueFiles':['profiles/'+cluster+'/values.yaml','../lab-profiles/monitoring/'+cluster+'/values.yaml']})
+            rendered='image: ghcr.io/subhankar12-spec/boutique-incident-bridge@sha256:'+'a'*64
+            with patch.object(lab,'cluster_state'),patch.object(lab,'run',return_value=rendered) as render,patch.object(lab,'apply'):
+                lab.deploy(cluster,monitoring=True)
+                self.assertEqual(render.call_args.args[0],['python3',lab.GITOPS/'scripts/render-monitoring.py',cluster,'--lab'])
 
     def test_private_credentials_reject_readable_files_and_symlinks(self):
         with tempfile.TemporaryDirectory() as tmp:

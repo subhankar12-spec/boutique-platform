@@ -388,13 +388,11 @@ def validate_release_images(rendered, *, monitoring=False):
 def argo_application(cluster, env, *, monitoring=False):
     name = f'boutique-{env}' if not monitoring else f'lab-monitoring-{cluster}'
     destination = 'boutique-' + env if not monitoring else 'monitoring'
-    path = f'environments/{env}' if not monitoring else f'lab-profiles/monitoring/{cluster}'
-    namespaces = [destination] if not monitoring else ['monitoring', 'monitoring-logs']
-    # AppProject cannot modify arbitrary cluster resources. Only the monitoring
-    # collector's reviewed cluster RBAC is permitted for monitoring applications.
+    path = f'environments/{env}' if not monitoring else 'monitoring'
+    namespaces = [destination] if not monitoring else ['monitoring', 'monitoring-logs'] + ['boutique-'+environment for environment in CLUSTERS[cluster]]
+    # Monitoring discovery uses Roles in the selected application namespaces;
+    # the chart requires no cluster-wide RBAC grants.
     cluster_resources = [{'group': '', 'kind': 'Namespace'}]
-    if monitoring:
-        cluster_resources += [{'group': 'rbac.authorization.k8s.io', 'kind': k} for k in ('ClusterRole', 'ClusterRoleBinding')]
     project = {'apiVersion': 'argoproj.io/v1alpha1', 'kind': 'AppProject', 'metadata': {'name': name, 'namespace': 'argocd'},
                'spec': {'sourceRepos': ['https://github.com/subhankar12-spec/boutique-gitops.git'],
                         'destinations': [{'namespace': ns, 'server': 'https://kubernetes.default.svc'} for ns in namespaces],
@@ -404,7 +402,9 @@ def argo_application(cluster, env, *, monitoring=False):
                     'destination': {'server': 'https://kubernetes.default.svc', 'namespace': destination},
                     'syncPolicy': {'automated': {'prune': True, 'selfHeal': True}, 'syncOptions': ['CreateNamespace=true'],
                                    'retry': {'limit': 3, 'backoff': {'duration': '5s', 'factor': 2, 'maxDuration': '1m'}}}}}
-    if not monitoring:
+    if monitoring:
+        app["spec"]["source"]["helm"]={"releaseName":"lab-monitoring-"+cluster,"valueFiles":[f"profiles/{cluster}/values.yaml",f"../lab-profiles/monitoring/{cluster}/values.yaml"]}
+    else:
         app["spec"]["source"]["helm"]={"releaseName":"boutique-"+env,"valueFiles":["values.yaml","releases.yaml",f"../../lab-profiles/{env}/values.yaml"]}
     return project, app
 
@@ -425,8 +425,7 @@ def deploy(cluster, monitoring=False, environment=None):
     # Validate all selected profiles before mutating any Applications.
     environments = ['production' if cluster == 'production' else 'dev'] if monitoring else selected
     for env in environments:
-        folder = GITOPS / ('lab-profiles/monitoring/' + cluster if monitoring else 'lab-profiles/' + env)
-        rendered = run(['kubectl', 'kustomize', folder]) if monitoring else run(['python3',GITOPS/'scripts/render.py',env,'--profile','lab'])
+        rendered = run(['python3',GITOPS/'scripts/render-monitoring.py',cluster,'--lab']) if monitoring else run(['python3',GITOPS/'scripts/render.py',env,'--profile','lab'])
         validate_release_images(rendered, monitoring=monitoring)
     for env in environments:
         project, app = argo_application(cluster, env, monitoring=monitoring)

@@ -46,3 +46,5 @@ This cloud runner cannot validate the full two-cluster deployment: it has insuff
 Start with [production lab setup](boutique-platform/docs/production-lab.md), [Jenkins setup](boutique-platform/docs/jenkins-setup.md), [delivery evidence](boutique-gitops/docs/release-evidence.md), and the [AWS infrastructure guide](boutique-infrastructure/README.md).
 
 Application charts and AWS telemetry: see `boutique-gitops/docs/helm-delivery.md` and `boutique-infrastructure/docs/aws-observability.md`.
+
+Monitoring, alert lab fixtures, optional local data resources and monitoring External Secrets also use Helm charts; Argo CD, Jenkins checks and operational scripts select their reviewed values.

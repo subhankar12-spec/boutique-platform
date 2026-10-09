@@ -2,8 +2,8 @@
   "validation_date": "2026-10-09",
   "scope": "Current cloud workspace; no live GitHub delivery, Kubernetes installation or AWS provisioning",
   "passed": {
-    "configuration_and_delivery_tests": 68,
-    "lab_safety_tests": 11,
+    "configuration_and_delivery_tests": 76,
+    "lab_safety_tests": 12,
     "postgres_queue_integration_tests": 5,
     "jenkins_locked_plugins": 74,
     "jenkins_declarative_definitions": 7,
@@ -17,7 +17,9 @@
     "monitoring_rule_and_receiver_routing_checks": true,
     "helm_profiles_preserving_previous_resources": 9,
     "terraform_audit_mock_tests": 4,
-    "helm_release_json_schemas": true
+    "helm_release_json_schemas": true,
+    "additional_helm_collections_preserving_previous_resources": 11,
+    "active_legacy_renderer_configurations": 0
   },
   "unverified": [
     "Full Jenkins-to-GitHub-to-Kubernetes delivery",

@@ -186,11 +186,11 @@ class DeploymentWaitTests(unittest.TestCase):
 
     def test_wrong_profile_repository_destination_or_inline_override_is_rejected(self):
         invalid=[]
-        for key,value in [('path','services/cart/overlays/dev'),('repoURL','https://github.com/other/repo.git'),('targetRevision','unreviewed')]:
+        for key,value in [('path','services/cart/unapproved-path'),('repoURL','https://github.com/other/repo.git'),('targetRevision','unreviewed')]:
             app=self.application();app['spec']['source'][key]=value;invalid.append(app)
         app=self.application();app['spec']['destination']['namespace']='boutique-production';invalid.append(app)
         app=self.application();app['metadata']['name']='lab-boutique-dev';invalid.append(app)
-        app=self.application();app['spec']['source']['kustomize']={'images':[IMAGE]};invalid.append(app)
+        app=self.application();app['spec']['source']['customRenderer']={'images':[IMAGE]};invalid.append(app)
         for app in invalid:
             with self.assertRaises(waiter.DeploymentError):self.poll(app=app)
 

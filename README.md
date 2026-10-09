@@ -19,3 +19,5 @@ python3 tests/smoke/smoke.py
 See [validation.md](docs/validation.md) for what ran and what remains unverified. Kubernetes deployment needs a supported host; cloud resources and remote notifications have not been provisioned or activated here.
 
 Application delivery uses service-owned Helm charts and separate dev/staging/production values; see [Helm delivery](../boutique-gitops/docs/helm-delivery.md). AWS monitoring and audit are described in [AWS observability](../boutique-infrastructure/docs/aws-observability.md).
+
+Monitoring, alert lab fixtures, optional local data resources and monitoring External Secrets also use Helm charts; Argo CD, Jenkins checks and operational scripts select their reviewed values.
