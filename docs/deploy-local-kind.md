@@ -1,5 +1,9 @@
 # Deploy Boutique on your Debian laptop: follow these steps
 
+**Optional manual exercise.** For the selected main project workflow, use
+[the CI/CD-first deployment guide](deploy-cicd-kind.md). That guide configures
+the platform and Jenkins before Argo deploys the application.
+
 **Goal:** open the storefront at **http://localhost:8080**, with its four
 application services, Redis and PostgreSQL running in your kind cluster.
 
@@ -7,9 +11,9 @@ Run these commands **on your Debian laptop**. Use the same terminal for
 steps 1–7, in order. Open a second terminal only when step 8 asks you to.
 If a command fails, stop at that step and use the troubleshooting table below.
 
-This first deployment uses locally built images and the local Helm values.
-Jenkins, Argo CD, AWS and external notification accounts come later, after this
-app works. The production delivery lab is the next learning milestone.
+This exercise uses locally built images and the local Helm values.
+It is independent of the CI/CD-first workflow; completing it is not required
+before configuring Jenkins or starting the signed delivery lab.
 
 The work you will do is:
 

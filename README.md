@@ -1,8 +1,14 @@
 # Runtime and operating guides
 
-**Deploy first:** follow the [eight-step Debian + kind walkthrough](docs/deploy-local-kind.md) to build, deploy and open the app on your laptop.
+**Start here:** follow the [main CI/CD-first kind deployment guide](docs/deploy-cicd-kind.md):
+clone → prepare clusters/controllers → configure Jenkins → build/publish releases →
+GitOps → Argo deployment → verification/promotion → monitoring/recovery.
 
 **Understand the architecture:** the [complete beginner guide](docs/beginner-guide.md) explains all eight repositories, the application request flow, and step-by-step Debian/Compose/existing-kind deployment. It then walks through Jenkins agents and credentials, the two-cluster dev/staging/production lab, signed releases, monitoring, AWS, troubleshooting and recovery.
+
+**Optional manual practice:** the [eight-step local kind exercise](docs/deploy-local-kind.md)
+uses locally built images and direct manifest application. It is not a prerequisite
+for the main CI/CD flow.
 
 Run `./scripts/local-up.sh` for Docker Compose and functional smoke checks. Secrets and database volumes are preserved on reruns. This is the fastest application development workflow.
 
@@ -22,7 +28,7 @@ python3 tests/smoke/smoke.py
 
 See [validation.md](docs/validation.md) for what ran and what remains unverified. Kubernetes deployment needs a supported host; cloud resources and remote notifications have not been provisioned or activated here.
 
-Application delivery uses service-owned Helm charts and separate dev/staging/production values; see [Helm delivery](../boutique-gitops/docs/helm-delivery.md). AWS monitoring and audit are described in [AWS observability](../boutique-infrastructure/docs/aws-observability.md).
+Application delivery uses service-owned Helm charts and separate dev/staging/production values; see [Helm delivery](https://github.com/subhankar12-spec/boutique-gitops/blob/main/docs/helm-delivery.md). AWS monitoring and audit are described in [AWS observability](https://github.com/subhankar12-spec/boutique-infrastructure/blob/main/docs/aws-observability.md).
 
 Monitoring, alert lab fixtures, optional local data resources and monitoring External Secrets also use Helm charts; Argo CD, Jenkins checks and operational scripts select their reviewed values.
 

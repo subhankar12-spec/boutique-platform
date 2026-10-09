@@ -1,5 +1,10 @@
 # Production delivery lab
 
+Follow [the main CI/CD-first deployment guide](deploy-cicd-kind.md) for the
+ordered setup. Cluster/controller bootstrap prepares the platform; Jenkins
+publishes the first signed releases before Argo deploys the app. A prior
+Compose or manual Kubernetes application deployment is optional.
+
 Keep one repository per service. This lab uses the same reviewed releases, immutable image digests, Helm chart/image selections and verification gates as the AWS reference. Two independent Kubernetes clusters separate dev/staging from production; it does not create AWS resources or replace the existing Docker Compose installation.
 
 | Boundary | Configuration |
@@ -51,7 +56,7 @@ The frontend origins are `https://dev.boutique.test:8443`, `https://staging.bout
 
 ## Prepare publication, credentials and releases
 
-Argo CD reads the real published GitOps repository. Local files alone cannot satisfy delivery. Publish the repositories and bootstrap trusted Jenkins first. Release the four services and the incident adapter through their build/test/scan gates. For the first installation, run the four application `boutique-{service}/main` jobs with `DELIVER_TO_DEV=false` and retain their successful release build numbers. This publishes the quality-checked, signed images without trying to verify an incomplete application. Use the aggregate bootstrap below to select the initial four-service baseline. Subsequent main builds keep automatic dev delivery enabled. `lab-profiles/{environment}/values.yaml` supplements the environment Helm chart with local data/TLS configuration; it does not replace the release digest or rebuild an environment-specific image.
+Argo CD reads the published GitOps repository; local files alone cannot satisfy delivery. The eight repositories are already published. After preparing cluster foundations, configure trusted Jenkins, identities and protection, then release the four application services through their build/test/scan gates. Release the incident adapter separately when adding monitoring. For the first installation, run the four application `boutique-{service}/main` jobs with `DELIVER_TO_DEV=false` and retain their successful release build numbers. This publishes the quality-checked, signed images without trying to verify an incomplete application. Use the aggregate bootstrap below to select the initial four-service baseline. Subsequent main builds keep automatic dev delivery enabled. `lab-profiles/{environment}/values.yaml` supplements the environment Helm chart with local data/TLS configuration; it does not replace the release digest or rebuild an environment-specific image.
 
 Use private files (`chmod 600`) for a read-only GitOps repository token and a GHCR `read:packages` token. Prefer short-lived GitHub App credentials and rotate them separately from the build/publish identity. Do not put tokens in command arguments, source files or chat.
 

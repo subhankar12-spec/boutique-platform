@@ -1,8 +1,13 @@
 # Shipyard Boutique: a beginner's complete architecture and deployment guide
 
-**Want to get the app running first?** Follow the
-[eight-step Debian + kind deployment walkthrough](deploy-local-kind.md).
-Return to this document for the architecture and full Jenkins delivery setup.
+**For deployment, start with the [main CI/CD-first kind guide](deploy-cicd-kind.md).**
+It gives the order: clone, prepare clusters/controllers, configure Jenkins,
+build/publish releases, deploy through GitOps/Argo, verify/promote, then monitor
+and practise recovery. Use this document for each phase's detailed explanation.
+
+The [manual local kind exercise](deploy-local-kind.md) and Compose application
+startup are optional practice. You do not need to deploy the app manually before
+configuring CI/CD.
 
 This is the starting point for understanding and operating this project. You do
 not need to understand every file before starting. Work through the checkpoints,
@@ -60,12 +65,26 @@ There are three deployment tracks, with a useful intermediate kind exercise:
 | Two-cluster production learning lab | Practice the intended delivery and operational boundaries | Nonprod and production kind clusters, controllers, signed releases, optional monitoring | Independent host failure domains or managed database HA |
 | AWS reference | Study/configure managed infrastructure | Terraform definitions for EKS, VPCs, managed data, audit and observability | Automatic installation of every Kubernetes controller or a free deployment |
 
-Start with sections 6–10. You can get the app running without first creating
-Jenkins credentials, Slack webhooks, ServiceNow instances or an AWS account.
+The recommended path is the two-cluster CI/CD delivery lab. Follow
+[the main deployment guide](deploy-cicd-kind.md) in execution order:
 
-Then study sections 11–14 and build the full lab in sections 15–18. The full
-delivery track is intentionally more involved: identities, keys, branch
-protection, agents and registry access are operator configuration.
+| Phase | Detailed reference here | Expected result |
+| --- | --- | --- |
+| Clone/install prerequisites | Sections 6–7 | Source and tools, no deployed app |
+| Prepare cluster foundations | Section 15.1–15.4 | Kubernetes, controllers and trust |
+| Configure Jenkins and access | Sections 13–14, then 15.5–15.6 | Agents, identities, protection and runtime secrets |
+| Build the four releases | Section 16.1 | Signed registry artifacts |
+| Deploy dev through GitOps/Argo | Section 16.2 | First verified application deployment |
+| Promote staging/production | Section 16.3–16.4 | Same artifacts, separate environments |
+| Monitor and practise recovery | Sections 18 and 20 | Operational signals and exercises |
+
+Chapter numbering groups the reference material; it is not a requirement to
+execute every chapter in numerical order. Sections 8–10 are an optional manual
+practice path, not prerequisites for the main workflow.
+
+The full delivery track requires identities, keys, branch protection, agents
+and registry access. An AWS account or real Slack/ServiceNow receiver is
+unnecessary for its default kind deployment.
 
 Do not mix the single-kind local image profile with the production learning
 profile. The first uses local tags for an introductory exercise. The second
@@ -666,6 +685,10 @@ frontend and GitOps creates changes in two separate Git repositories.
 
 ## 8. Run the application with Docker Compose
 
+**Optional application exercise.** The main CI/CD-first workflow does not
+require this Compose deployment. Continue with its cluster foundations and
+Jenkins setup using [the ordered main guide](deploy-cicd-kind.md).
+
 ### 8.1 Start it
 
 ~~~bash
@@ -736,6 +759,10 @@ You can use the storefront, the smoke report succeeds, and you can explain which
 service talks to which database. Continue to kind only after this works.
 
 ## 9. Deploy the application in your kind cluster
+
+**Optional manual Kubernetes exercise.** This is not the first application
+deployment step in the main CI/CD workflow. That workflow publishes signed
+releases first and lets Argo deploy the reviewed GitOps baseline.
 
 This is the beginner exercise. It deliberately uses locally built images and
 directly applied Helm-rendered manifests. It does not create signed production
@@ -1191,8 +1218,10 @@ GitOps pipeline. The supported required policy result comes from
 
 ## 13. Configure Jenkins controllers and agents
 
-Do this chapter after the introductory app deployment works. Agents and
-credentials are manual setup steps; starting Compose does not provision them.
+For the main workflow, prepare cluster foundations first (section 15.1–15.4),
+then configure Jenkins here, before any application deployment. Agents and
+credentials are operator setup steps; starting controller Compose does not
+provision them. Follow [the ordered main guide](deploy-cicd-kind.md).
 
 ### 13.1 Start and inspect the controllers
 
@@ -1561,14 +1590,17 @@ Before your first release, confirm:
 - Artifact and evidence keys exist under the exact credential IDs.
 - GitOps protection and the separate reviewer identity are ready.
 
-Cluster verifier credentials are added after the foundation in the next chapter.
+Cluster verifier credentials are configured in section 15.6 after the foundation
+exists. In the main execution order, the foundation was prepared before Jenkins.
 AWS backend/tfvars/role credentials are unnecessary for kind.
 
 ## 15. Bootstrap the two-cluster production learning lab
 
-This is a separate path from your existing single kind cluster. It creates
-**boutique-nonprod** and **boutique-production**, with dedicated local state.
-Keep your first learning cluster unless you intentionally decide to remove it.
+This is the cluster foundation for the recommended CI/CD-first workflow.
+It creates **boutique-nonprod** and **boutique-production**, with dedicated local
+state; an earlier manual single-kind app deployment is not required.
+If you already have another kind cluster, preserve it unless you intentionally
+decide to remove it.
 
 ### 15.1 Understand what bootstrap installs
 
@@ -2962,17 +2994,20 @@ Treat these as learning sessions with exit checks rather than a deadline:
 
 | Session | Do | You can move on when... |
 | --- | --- | --- |
-| 1: Application | Compose, browse, cart, order, inspect service logs | You can explain which service/data store handles each action |
-| 2: Kubernetes | Existing kind deployment, inspect Pods/Services/PVCs | You can explain image load, DNS, readiness and persistence |
-| 3: Helm | Compare values with rendered YAML | You can locate the source of an environment setting |
-| 4: Foundations | Two-cluster bootstrap, CA, Calico and Argo | You can distinguish cluster, namespace, trust and controller responsibilities |
-| 5: Jenkins isolation | Controllers, native agents, seed jobs | Validation cannot publish/deploy and required agents are online |
-| 6: Release | First four signed releases | You can trace commit → image digest → chart → signed record |
-| 7: Delivery | Bootstrap dev, staging and production | Each environment has live successful signed verification |
+| 1: Workspace/tools | Clone repositories, install prerequisites and run doctor | Source/tooling/host are ready |
+| 2: Foundations | Two-cluster bootstrap, CA, Calico and Argo | Clusters/controllers are healthy; no manual app deployment |
+| 3: Jenkins/access | Controllers, isolated agents, credentials, protection and seeds | Required agents/identities are ready and validation cannot publish/deploy |
+| 4: Releases | Jenkins builds/tests/publishes four signed releases | You can trace commit → image digest → chart → signed record |
+| 5: Dev delivery | Bootstrap GitOps, connect Argo at the initial pause, resume verification | The first app deployment has signed dev evidence |
+| 6: Promotion | Bootstrap staging/production with the same artifacts and preceding evidence | Each environment has successful signed verification |
+| 7: Helm/runtime | Inspect selected charts, rendered objects, Pods, Services and PVCs | You can explain environment configuration and reconciliation |
 | 8: Change/recover | Small service release, promotion, rollback | You can explain build-once promotion and schema constraints |
 | 9: Observe/respond | Dashboard, alerts, fixtures, queue recovery | You can diagnose app failure versus notification failure |
 | 10: Recovery | Backup, isolated restore, measured exercise | You have evidence of what was recovered and what remains unproven |
 | 11: AWS | Read modules, validate roots, review architecture/cost | You can explain private access, state, IRSA/ESO and audit |
+
+Compose and the manual single-kind deployment remain optional practice/debugging
+exercises. They are not prerequisites for sessions 1–6.
 
 Keep a short lab journal: what changed, exact versions, what failed, how you
 proved the fix and what you still do not know. Explaining a failed rollout

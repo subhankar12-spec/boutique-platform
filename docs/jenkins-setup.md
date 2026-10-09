@@ -1,5 +1,10 @@
 # Jenkins setup
 
+For the full execution order, follow [the main CI/CD-first deployment guide](deploy-cicd-kind.md).
+Prepare cluster/controller foundations, configure Jenkins and its identities,
+then build releases and deploy through GitOps/Argo. A prior manual application
+deployment is not required.
+
 This setup keeps service code small while exercising reviewed releases, registry provenance, GitOps promotion, runtime verification and recovery. Use the [two-cluster production lab](production-lab.md) on a suitable laptop Docker host/Linux VM, or configure the separate AWS reference. No AWS deployment is required to start learning the delivery workflow.
 
 ## Start the local controllers
@@ -33,7 +38,7 @@ Create inbound nodes with one executor each and provision their tools/network ro
 
 The policy executor must be distinct from the occupied deploy executor: the parent waits for policy while retaining its deployment workspace. The release and delivery parents free their build/deploy executor before waiting for downstream rollout verification. Promotion and rollback retain their common `boutique-delivery-ENV` lock through the verifier, which must not reacquire it. These choices avoid single-executor child-job deadlocks while preventing competing deliveries to the same environment.
 
-Use [agent setup](../../boutique-ci/jenkins/agents/README.md) for WebSocket connection and rootless Docker requirements. Deploy/policy agents need Python, Git, GitHub CLI, OpenSSL, kubectl, Helm and kubeconform; infrastructure agents also need Terraform. Controllers do not build images. Agent VMs, network routes and remote TLS endpoints are explicit provisioning tasks.
+Use [agent setup](https://github.com/subhankar12-spec/boutique-ci/blob/main/jenkins/agents/README.md) for WebSocket connection and rootless Docker requirements. Deploy/policy agents need Python, Git, GitHub CLI, OpenSSL, kubectl, Helm and kubeconform; infrastructure agents also need Terraform. Controllers do not build images. Agent VMs, network routes and remote TLS endpoints are explicit provisioning tasks.
 
 ## Repository and job wiring
 
@@ -85,6 +90,6 @@ Follow [deployment](runbooks/deployment.md) for the first complete release and r
 
 Staging/prod promotions name a specific trusted `boutique-verify` build for the same image in the preceding environment; evidence is limited to 24 hours. Rollback selects a previously verified same-environment digest with retained evidence up to 30 days old. Both open reviewed GitOps changes and sign fresh verification after reconciliation. A merged PR alone is not deployment success. Keep production release/evidence artifacts for recovery and review database compatibility before approving a change.
 
-Application build jobs validate and publish service-owned Helm packages; version-2 signatures bind the chart and image. Argo uses environment Helm values, with a third lab values file when appropriate. See [Helm delivery](../../boutique-gitops/docs/helm-delivery.md). The infrastructure job selects nonprod, production or the once-per-account audit root; audit needs backend/variables credentials, not the RDS CA.
+Application build jobs validate and publish service-owned Helm packages; version-2 signatures bind the chart and image. Argo uses environment Helm values, with a third lab values file when appropriate. See [Helm delivery](https://github.com/subhankar12-spec/boutique-gitops/blob/main/docs/helm-delivery.md). The infrastructure job selects nonprod, production or the once-per-account audit root; audit needs backend/variables credentials, not the RDS CA.
 
 The fixed GitOps policy job renders every cloud and lab monitoring profile using protected `render-monitoring.py`, and lints/renders the optional database and External Secrets charts. Candidate scripts are never executed. Monitoring configuration and chart files remain CODEOWNER-protected.
