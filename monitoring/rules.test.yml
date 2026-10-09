@@ -1,23 +1,158 @@
-rule_files: [rules.yml]
+rule_files:
+- rules.yml
 evaluation_interval: 1m
 tests:
-  - interval: 1m
-    input_series:
-      - series: 'up{job="boutique",instance="frontend:8080",service="frontend",environment="dev",cluster="local"}'
-        values: '0 0 0 0 0 0'
-    alert_rule_test:
-      - eval_time: 3m
-        alertname: BoutiqueServiceDown
-        exp_alerts:
-          - exp_labels: {job: boutique, instance: 'frontend:8080', service: frontend, environment: dev, cluster: local, severity: critical}
-            exp_annotations:
-              summary: 'frontend is unavailable in dev'
-              runbook_url: https://github.com/subhankar12-spec/boutique-platform/blob/main/docs/monitoring.md#service-down
-  - interval: 1m
-    input_series:
-      - series: 'up{job="boutique",service="frontend"}'
-        values: '1 0 1 1'
-    alert_rule_test:
-      - eval_time: 3m
-        alertname: BoutiqueServiceDown
-        exp_alerts: []
+- interval: 1m
+  input_series:
+  - series: up{job="boutique",instance="frontend:8080",service="frontend",environment="dev",cluster="local"}
+    values: 0 0 0 0 0 0
+  alert_rule_test:
+  - eval_time: 3m
+    alertname: BoutiqueServiceDown
+    exp_alerts:
+    - exp_labels:
+        job: boutique
+        instance: frontend:8080
+        service: frontend
+        environment: dev
+        cluster: local
+        severity: critical
+      exp_annotations:
+        summary: frontend is unavailable in dev
+        runbook_url: https://github.com/subhankar12-spec/boutique-platform/blob/main/docs/monitoring.md#service-down
+- interval: 1m
+  input_series:
+  - series: up{job="boutique",service="frontend"}
+    values: 1 0 1 1
+  alert_rule_test:
+  - eval_time: 3m
+    alertname: BoutiqueServiceDown
+    exp_alerts: []
+- interval: 1m
+  input_series:
+  - series: boutique_incident_pending{job="incident-bridge",cluster="production",environment="production",service="incident-bridge",namespace="monitoring",pod="worker-a",instance="worker-a:8084"}
+    values: 7+0x8
+  - series: boutique_incident_pending{job="incident-bridge",cluster="production",environment="production",service="incident-bridge",namespace="monitoring",pod="worker-b",instance="worker-b:8084"}
+    values: 7+0x8
+  - series: boutique_incident_dead_letters{job="incident-bridge",cluster="production",environment="production",service="incident-bridge",namespace="monitoring",pod="worker-a",instance="worker-a:8084"}
+    values: 2+0x8
+  - series: boutique_incident_dead_letters{job="incident-bridge",cluster="production",environment="production",service="incident-bridge",namespace="monitoring",pod="worker-b",instance="worker-b:8084"}
+    values: 2+0x8
+  promql_expr_test:
+  - expr: boutique:incident:pending
+    eval_time: 2m
+    exp_samples:
+    - labels: '{__name__="boutique:incident:pending",cluster="production",environment="production"}'
+      value: 7
+  - expr: boutique:incident:dead_letters
+    eval_time: 2m
+    exp_samples:
+    - labels: '{__name__="boutique:incident:dead_letters",cluster="production",environment="production"}'
+      value: 2
+  alert_rule_test:
+  - eval_time: 2m
+    alertname: IncidentDeliveryDeadLetters
+    exp_alerts:
+    - exp_labels: &id001
+        cluster: production
+        environment: production
+        service: incident-bridge
+        severity: critical
+        incident_delivery: disabled
+      exp_annotations:
+        summary: Incident delivery exhausted retries; operator recovery is required
+        runbook_url: https://github.com/subhankar12-spec/boutique-platform/blob/main/monitoring/incident-bridge/README.md#delivery-guarantees-and-failure-recovery
+- interval: 1m
+  input_series:
+  - series: boutique_incident_oldest_seconds{job="incident-bridge",cluster="production",environment="production",service="incident-bridge",namespace="monitoring",pod="worker-a",instance="worker-a:8084"}
+    values: 150+0x8
+  - series: boutique_incident_oldest_seconds{job="incident-bridge",cluster="production",environment="production",service="incident-bridge",namespace="monitoring",pod="worker-b",instance="worker-b:8084"}
+    values: 150+0x8
+  alert_rule_test:
+  - eval_time: 6m
+    alertname: IncidentDeliveryBacklog
+    exp_alerts: []
+- interval: 1m
+  input_series:
+  - series: boutique_incident_oldest_seconds{job="incident-bridge",cluster="production",environment="production",service="incident-bridge",namespace="monitoring",pod="worker-a",instance="worker-a:8084"}
+    values: 400+0x8
+  - series: boutique_incident_oldest_seconds{job="incident-bridge",cluster="production",environment="production",service="incident-bridge",namespace="monitoring",pod="worker-b",instance="worker-b:8084"}
+    values: 400+0x8
+  alert_rule_test:
+  - eval_time: 6m
+    alertname: IncidentDeliveryBacklog
+    exp_alerts:
+    - exp_labels: *id001
+      exp_annotations:
+        summary: ServiceNow incident delivery has been delayed for over five minutes
+        runbook_url: https://github.com/subhankar12-spec/boutique-platform/blob/main/monitoring/incident-bridge/README.md#delivery-guarantees-and-failure-recovery
+- interval: 1m
+  input_series:
+  - series: boutique_incident_worker_heartbeat_age_seconds{job="incident-bridge",cluster="production",environment="production",service="incident-bridge",namespace="monitoring",pod="worker-a",instance="worker-a:8084"}
+    values: 75+0x5
+  - series: boutique_incident_worker_heartbeat_age_seconds{job="incident-bridge",cluster="production",environment="production",service="incident-bridge",namespace="monitoring",pod="worker-b",instance="worker-b:8084"}
+    values: 0+0x5
+  - series: up{job="incident-bridge",cluster="production",environment="production",service="incident-bridge",namespace="monitoring",pod="worker-a",instance="worker-a:8084"}
+    values: 1+0x5
+  - series: up{job="incident-bridge",cluster="production",environment="production",service="incident-bridge",namespace="monitoring",pod="worker-b",instance="worker-b:8084"}
+    values: 1+0x5
+  alert_rule_test:
+  - eval_time: 3m
+    alertname: IncidentWorkerStalled
+    exp_alerts:
+    - exp_labels:
+        cluster: production
+        environment: production
+        service: incident-bridge
+        severity: critical
+        incident_delivery: disabled
+        job: incident-bridge
+        namespace: monitoring
+        pod: worker-a
+        instance: worker-a:8084
+      exp_annotations:
+        summary: Incident worker worker-a heartbeat is stale
+        runbook_url: https://github.com/subhankar12-spec/boutique-platform/blob/main/monitoring/incident-bridge/README.md#delivery-guarantees-and-failure-recovery
+  - eval_time: 3m
+    alertname: IncidentBridgeUnavailable
+    exp_alerts: []
+  - eval_time: 3m
+    alertname: IncidentBridgeMissing
+    exp_alerts: []
+- interval: 1m
+  input_series:
+  - series: up{job="incident-bridge",cluster="production",environment="production",service="incident-bridge",namespace="monitoring",pod="worker-a",instance="worker-a:8084"}
+    values: 0+0x5
+  - series: up{job="incident-bridge",cluster="production",environment="production",service="incident-bridge",namespace="monitoring",pod="worker-b",instance="worker-b:8084"}
+    values: 1+0x5
+  alert_rule_test:
+  - eval_time: 3m
+    alertname: IncidentBridgeUnavailable
+    exp_alerts:
+    - exp_labels:
+        cluster: production
+        environment: production
+        service: incident-bridge
+        severity: critical
+        incident_delivery: disabled
+        job: incident-bridge
+        namespace: monitoring
+        pod: worker-a
+        instance: worker-a:8084
+      exp_annotations:
+        summary: Incident bridge worker-a cannot be scraped
+        runbook_url: https://github.com/subhankar12-spec/boutique-platform/blob/main/monitoring/incident-bridge/README.md#delivery-guarantees-and-failure-recovery
+- interval: 1m
+  input_series: []
+  alert_rule_test:
+  - eval_time: 3m
+    alertname: IncidentBridgeMissing
+    exp_alerts:
+    - exp_labels:
+        job: incident-bridge
+        service: incident-bridge
+        severity: critical
+        incident_delivery: disabled
+      exp_annotations:
+        summary: No incident bridge scrape targets are present
+        runbook_url: https://github.com/subhankar12-spec/boutique-platform/blob/main/monitoring/incident-bridge/README.md#delivery-guarantees-and-failure-recovery

@@ -1,13 +1,19 @@
-# Local development and integration
+# Runtime and operating guides
 
-Run `./scripts/local-up.sh` for Compose and the functional smoke test. Run `./scripts/homelab-up.sh dev` for local Kubernetes after installing kind and kubectl; staging and production are optional arguments. This helper explicitly selects `kind-boutique` so it cannot accidentally target a cloud context.
+Run `./scripts/local-up.sh` for Docker Compose and functional smoke checks. Secrets and database volumes are preserved on reruns. This is the fastest application development workflow.
 
-Use `scripts/install-tools.sh` for checksum-verified Linux amd64 CLI installation. PyYAML is required for manifest/promotion checks. `python3 -m unittest discover -s tests/config -v` checks promotion ordering and immutable image enforcement. The actual smoke test uses only Python's standard library and tests all services through the public frontend boundary.
+For production delivery practice on a suitable laptop or Linux VM, follow [production-lab.md](docs/production-lab.md). It creates separate nonprod and production clusters with pinned controllers, TLS, policy enforcement, read-only deployment verification and recovery drills. It uses the same reviewed image digests and promotion overlays as the AWS reference. The older `homelab-up.sh` helper remains a single-cluster bootstrap exercise; the production lab is the preferred delivery path.
 
-Local namespace deployments are direct bootstrap exercises. Once separate repositories exist, install Argo CD and use its Applications for GitOps reconciliation. Do not leave two deployment mechanisms managing the same resources.
+Follow [Jenkins setup](docs/jenkins-setup.md) for the isolated controllers, initial four-service bootstrap, signed artifacts, promotion and rollback. The four application repositories and this repository's incident adapter use the shared build pipeline. GitOps changes are checked by a fixed trusted job before merge; Argo CD owns reconciliation.
 
-See docs for Jenkins, AWS, runtime limitations and runbooks.
+[Monitoring](docs/monitoring.md) includes Prometheus/Grafana, Alertmanager, Loki/Alloy, Slack preparation, ServiceNow lifecycle integration, a PostgreSQL queue for two production adapter replicas, and local notification fixtures. Live notification activation requires securely supplied credentials and the documented ServiceNow endpoint.
 
-## Observability and incident delivery
+Use `scripts/install-tools.sh` for verified Linux amd64 CLIs. Python/PyYAML are needed for manifest and delivery checks:
 
-See [monitoring setup and runbooks](docs/monitoring.md). Includes Prometheus, Grafana dashboards, Alertmanager Slack routing, a durable ServiceNow ITSM adapter, Loki/Alloy logs, local mock delivery tests, and separate Kubernetes scrape profiles. The trusted release job also builds the incident adapter from this repository. HA monitoring is a separate reference, not a property of the affordable single-replica stack.
+```bash
+python3 -m unittest discover -s tests/config -v
+python3 scripts/test_production_lab.py -v
+python3 tests/smoke/smoke.py
+```
+
+See [validation.md](docs/validation.md) for what ran and what remains unverified. Kubernetes deployment needs a supported host; cloud resources and remote notifications have not been provisioned or activated here.

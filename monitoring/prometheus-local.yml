@@ -52,3 +52,8 @@ scrape_configs:
   static_configs:
   - targets:
     - incident-bridge:8084
+    labels:
+      service: incident-bridge
+      environment: dev
+      cluster: local
+      pod: local

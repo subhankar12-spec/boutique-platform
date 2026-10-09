@@ -1,40 +1,86 @@
 # Jenkins setup
 
-## Local controllers
+This setup keeps service code small while exercising reviewed releases, registry provenance, GitOps promotion, runtime verification and recovery. Use the [two-cluster production lab](production-lab.md) on a suitable laptop Docker host/Linux VM, or configure the separate AWS reference. No AWS deployment is required to start learning the delivery workflow.
+
+## Start the local controllers
 
 ```bash
 cd boutique-ci/jenkins
 ./scripts/init-local.sh
+python3 scripts/init-signing-keys.py
 docker compose up -d --build
 ```
 
-Validation binds to loopback port 8090; release binds to 8091. Both use JCasC, zero controller executors and persistent Jenkins home volumes. Credentials are in ignored `.env`. Treat the single local admin as a bootstrap account; remote deployments require TLS and a configured identity provider and scoped authorization. Input approver groups `release-managers` and `platform-admins` must exist in that identity provider before the approval jobs can be used.
+Validation listens on loopback port 8090; release listens on 8091. Both have zero controller executors, JCasC and independent persistent home volumes. `init-local.sh` preserves existing credentials and generates missing passwords in ignored mode-0600 `.env`. It sets `BOUTIQUE_CI_LIBRARY_REF` to the current CI commit only when the setting is absent: review the full commit SHA, and update it explicitly when approving a library upgrade. The library is configured as untrusted, with version overrides disabled.
 
-The local baseline deliberately uses two controllers: any PR Jenkinsfile can execute arbitrary code, select labels and attempt credential access. Labels on one controller are not a sufficient isolation boundary. The validation controller gets only scoped read credentials and disposable build agents. Trusted release/deploy agents and all publishing, GitOps and AWS credentials belong exclusively to the release controller.
+The local realm includes the bootstrap `admin` identity and named `release-manager` / `platform-admin` approvers. Their generated passwords stay in `.env`; retrieve them locally without copying values into chat or build logs. Production delivery inputs name `release-manager`; Terraform apply names `platform-admin`. For shared or remote use, configure organizational TLS/SSO/RBAC and deliberately map those approver names in the pipeline configuration. Local bootstrap accounts are not an organizational identity system.
 
-## Repository wiring
+The controller pins Jenkins 2.580.1 and 74 checksum-locked plugins from official archives. `python3 scripts/doctor.py` checks the lock/tool prerequisites. From the repository root, `python3 jenkins/scripts/smoke-controller.py --directory /secure/private-cache` performs an isolated runtime check with Java 21 and a mode-0700 cache outside the checkout. It does not create/index real source jobs or receive GitHub/cloud credentials.
 
-1. Create the eight GitHub repositories with the matching names and push their individual sources to `main`.
-2. Configure an untrusted Folder-scoped `boutique-ci` shared library on validation, retrieving this repo through read-only credentials. Pin its default version to a reviewed commit and disallow overrides. Add the service multibranch jobs from `jenkins/jobs/validation.groovy` using a reviewed Job DSL seed.
-3. Configure signed GitHub webhooks and branch discovery. Fork PR discovery is disabled by the seed. Never put release credentials on validation even if forks are disabled.
-4. On release, create pipeline jobs using `jenkins/jobs/release.groovy`, and an infrastructure SCM pipeline using `boutique-infrastructure/Jenkinsfile`. Keep pipeline definitions on a protected trusted branch.
-5. Protect application/library/infrastructure/GitOps `main` branches: reviews, required checks, restricted force pushes, no bot bypass of production reviews.
+## Keep the trust boundaries separate
 
-## Credential IDs (enter values securely in Jenkins)
+Any PR Jenkinsfile can execute code, request labels and attempt credential bindings. The validation controller therefore receives only scoped read credentials and disposable build agents. Release/deploy agents, publishing credentials, GitOps write access, private signing keys and AWS permissions belong to the separate release controller. Do not connect a trusted agent or shared Docker daemon to validation.
 
-| ID | Type / use |
+Create inbound nodes with one executor each and provision their tools/network routes:
+
+| Controller | Label | Purpose |
+|---|---|---|
+| Validation | `isolated-builder` | Disposable PR tests/builds/scans; separate rootless Docker daemon |
+| Release | `trusted-release` | Protected-main tests/builds/publishing; dedicated rootless Docker daemon |
+| Release | `trusted-deploy` | GitOps preparation and read-only cluster/HTTPS verification |
+| Release | `policy-check` | Fixed GitOps PR policy and rendering; no private signing key, Docker or cluster credential required |
+| Release | `terraform-trusted` | Optional AWS plan/apply using short-lived workload identity |
+
+The policy executor must be distinct from the occupied deploy executor: the parent waits for policy while retaining its deployment workspace. The release and delivery parents free their build/deploy executor before waiting for downstream rollout verification. Promotion and rollback retain their common `boutique-delivery-ENV` lock through the verifier, which must not reacquire it. These choices avoid single-executor child-job deadlocks while preventing competing deliveries to the same environment.
+
+Use [agent setup](../../boutique-ci/jenkins/agents/README.md) for WebSocket connection and rootless Docker requirements. Deploy/policy agents need Python, Git, GitHub CLI, OpenSSL, kubectl and kubeconform; infrastructure agents also need Terraform. Controllers do not build images. Agent VMs, network routes and remote TLS endpoints are explicit provisioning tasks.
+
+## Repository and job wiring
+
+1. Publish the eight independent repositories under `subhankar12-spec`, preserving their `main` branches. The current integration cannot create/push them; see [validation](validation.md). Argo and SCM jobs require reachable published sources.
+2. Configure scoped `github-read` credentials on each controller. The JCasC shared library retrieves `boutique-ci` at the reviewed `BOUTIQUE_CI_LIBRARY_REF`.
+3. Run the reviewed `jenkins/jobs/validation.groovy` seed on validation. It generates application/platform/GitOps multibranch jobs with origin PR discovery and no fork PR discovery. Configure signed GitHub webhooks and the service-required checks.
+4. Run `jenkins/jobs/release.groovy` on release. It generates main-only service/platform multibranch jobs, `boutique-bootstrap`, `boutique-promote`, `boutique-verify`, `boutique-rollback`, `boutique-gitops-check` and `boutique-infrastructure`.
+5. Protect application, CI, infrastructure and GitOps main branches with suitable checks, restricted writes/force pushes and owner review of trusted definitions. A privileged bot must not bypass production review. Use a GitHub App/dedicated bot to create owned-path PRs and a different reviewer identity: GitHub does not permit approving your own PR.
+
+`boutique-gitops-check` loads its definition from protected CI and its tools from protected GitOps main. Candidate PR files are evaluated as data; its required result must not come from the candidate's Jenkinsfile. Manual GitOps PRs also need this fixed job, with their numeric `PR_NUMBER`. Configure a webhook/dispatcher or run it explicitly after the PR changes.
+
+GitOps main must require the exact `boutique/gitops-policy` status, strict up-to-date checks, administrator enforcement, CODEOWNER approval and dismissal of stale reviews. The checked-in CODEOWNERS protects policy/configuration and staging/production changes. Dev digest overlays/records are intentionally unowned so they can auto-merge after the cryptographic policy check. To support that path, set the general required review count to zero while retaining CODEOWNER review for owned paths; alternatively require a review for dev and disable automated dev merge. Restrict who can publish the required status to the trusted integration when the repository protection mechanism supports it. Auto-merge must be enabled at the repository level. A base/head change during policy execution fails and requires a fresh check.
+
+## Credential IDs
+
+Enter values through Jenkins credential settings or an approved secret-management integration. Never store token values in tracked files.
+
+| ID | Type / scope |
 |---|---|
-| github-read | Scoped HTTPS repository checkout credential |
-| ghcr-publish | Username/password binding; GHCR token with package publication permission |
-| gitops-pr | Username/password binding; narrow GitOps repository write + PR credential |
-| kubeconfig-dev / staging / production | File credentials containing limited rollout-read access, not cluster-admin |
+| `github-read` | Username/password; repository checkout only, independently scoped per controller |
+| `ghcr-publish` | Username/password; release controller package publication |
+| `gitops-pr` | Username/password; narrow GitOps contents/PR access and protection metadata read |
+| `gitops-checks` | Secret text; fixed policy job repository read and commit-status write |
+| `release-artifact-signing-key` | File; private Ed25519 key used by protected-main publication |
+| `release-artifact-public-key` | File; independently trusted artifact verification key |
+| `release-evidence-signing-key` | File; private Ed25519 key used by trusted deployment verification |
+| `release-evidence-public-key` | File; independently trusted deployment verification key |
+| `kubeconfig-dev`, `kubeconfig-staging`, `kubeconfig-production` | Files; namespace rollout/pod read plus Argo Application read, without secret access or deployment writes |
+| `boutique-ca-dev`, `boutique-ca-staging`, `boutique-ca-production` | Files; trust material for the actual storefront TLS origins |
+| `terraform-nonprod-backend`, `terraform-production-backend` | Files; environment-specific backend settings |
+| `terraform-nonprod-variables`, `terraform-production-variables` | Files; environment-specific Terraform inputs |
+| `rds-global-ca-bundle` | File; verified public RDS trust material for infrastructure/data setup |
 
-For GitHub Apps, install the integration that refreshes short-lived credentials and configure bindings compatible with these jobs; do not put an installation ID where a token is expected. Registry credentials need actual package write access. Make lab packages public or configure separate pull credentials in each namespace; publication alone does not grant cluster pull access.
+The key generator stores separate artifact/evidence pairs under ignored mode-0700 `jenkins/.delivery-secrets/`, with mode-0600 files. Upload them securely, restrict private-key use to the intended trusted jobs and back them up securely. Never trust a public key supplied by a PR, caller parameter or signed envelope. Rotate through reviewed credential replacement and re-verification; replacing a verification key rejects old signatures until a planned retention/rotation strategy is applied.
 
-AWS Terraform agents obtain short-lived instance/workload role credentials, optionally assuming a reviewed deployment role. IAM permission policies must be scoped to the target account and resources before enabling apply; no all-powerful credential is supplied here. Configure Terraform backend permissions for state objects and `.tflock` creation/deletion. Deployment agents need a route to private EKS endpoints.
+Prefer short-lived GitHub App credentials with bindings compatible with these jobs; an installation ID alone is not a token. Make runtime packages public or supply separate namespace image-pull credentials. A publisher token does not give the cluster permission to pull private images.
 
-## Promotion
+## Configure the target runtime
 
-Release a main-branch commit. Record its Jenkins artifact digest. Promote that digest to dev; merge the GitOps PR and wait for Argo CD. Run verify for dev. Promote to staging, merge and verify. Production approval reviews that staging build's recorded deployed digests and smoke result; merge production PR, then verify production. Promotion itself is not proof of successful rollout.
+Set `BOUTIQUE_DEV_ORIGIN`, `BOUTIQUE_STAGING_ORIGIN` and `BOUTIQUE_PRODUCTION_ORIGIN` on the release controller to the actual HTTPS origins, matching frontend `PUBLIC_ORIGIN`. Lab defaults are `https://dev.boutique.test:8443`, `https://staging.boutique.test:8443` and `https://production.boutique.test:9443`. Configure DNS/routing from the deploy agent and supply the relevant CA; loopback inside another container is not the Docker host.
 
-Set actual storefront hostnames in verification pipeline and frontend overlays together. Smoke tests send the same origin they target. Back up Jenkins home and test restoration; lock and review plugin versions after bootstrap.
+The lab's `export-verifier` command creates expiring namespace-scoped kubeconfigs, without Secret reads or admin access. Renew the requested 24-hour credentials before a build/drill session. Continuous operation should use automated short-lived identity. Do not upload operator/admin kubeconfigs to Jenkins.
+
+AWS Terraform agents use short-lived instance/workload roles, optionally assuming a reviewed deployment role. Scope resource/state permissions, including backend `.tflock` operations, before applying. File inputs contain backend/variables, not AWS access keys. Plans stay private; only a redacted action summary is archived, and approval applies the exact saved plan. Deployment agents also need access to private EKS endpoints. Terraform does not automatically install every platform controller.
+
+## Release, promote and recover
+
+Follow [deployment](runbooks/deployment.md) for the first complete release and routine dev → staging → production flow. A protected-main build archives its signed release and measured scan/SBOM before calling delivery; the artifacts can be consumed while that parent still waits. A parent delivery failure does not erase the already published immutable artifact.
+
+Staging/prod promotions name a specific trusted `boutique-verify` build for the same image in the preceding environment; evidence is limited to 24 hours. Rollback selects a previously verified same-environment digest with retained evidence up to 30 days old. Both open reviewed GitOps changes and sign fresh verification after reconciliation. A merged PR alone is not deployment success. Keep production release/evidence artifacts for recovery and review database compatibility before approving a change.

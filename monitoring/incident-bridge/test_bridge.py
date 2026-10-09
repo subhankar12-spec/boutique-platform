@@ -74,4 +74,149 @@ class WebhookTests(QueueFixture):
             self.assertEqual(post('rotated-test-token',{'alerts':[{}]}),400)
         finally:server.shutdown();server.server_close();os.environ.pop('WEBHOOK_TOKEN_FILE')
 
-if __name__=="__main__": unittest.main()
+
+class DeliverySafetyTests(QueueFixture):
+    def test_resolution_during_delivery_is_not_acknowledged_with_firing(self):
+        b.enqueue(self.a)
+        def remote(key, alert):
+            self.calls.append(alert['status'])
+            if alert['status'] == 'firing':
+                b.enqueue(dict(self.a, status='resolved'))
+        b.deliver = remote
+        b.work_once()
+        with b.connect() as db:
+            self.assertEqual(db.execute('SELECT done,revision,delivered_revision FROM queue').fetchone(), (0,2,1))
+        b.work_once()
+        self.assertEqual(self.calls, ['firing','resolved'])
+        self.assertFalse(b.work_once())
+
+    def test_group_is_atomic_when_later_alert_is_invalid(self):
+        with self.assertRaises(ValueError):
+            b.enqueue_many([self.a, {}])
+        with b.connect() as db:
+            self.assertEqual(db.execute('SELECT count(*) FROM queue').fetchone()[0], 0)
+
+    def test_firing_refresh_does_not_duplicate_delivery(self):
+        b.enqueue(dict(self.a, endsAt='2026-10-08T00:05:00Z'))
+        b.work_once()
+        b.enqueue(dict(self.a, endsAt='2026-10-08T00:10:00Z'))
+        self.assertFalse(b.work_once())
+        self.assertEqual(self.calls, ['firing'])
+
+    def test_expired_lease_is_recovered_and_stale_owner_cannot_acknowledge(self):
+        b.enqueue(self.a)
+        first = b.claim()
+        self.assertIsNone(b.claim())
+        with b.connect() as db:
+            db.execute('UPDATE queue SET lease_until=0')
+        second = b.claim()
+        self.assertNotEqual(first[-1], second[-1])
+        b.acknowledge(first)
+        with b.connect() as db:
+            self.assertEqual(db.execute('SELECT done,lease_token FROM queue').fetchone(), (0,second[-1]))
+        b.acknowledge(second)
+        self.assertFalse(b.work_once())
+
+    def test_exhausted_retries_are_durable_and_can_be_requeued(self):
+        b.enqueue(self.a)
+        def fail(*args): raise ConnectionError()
+        b.deliver = fail
+        for _ in range(b.MAX_ATTEMPTS):
+            self.assertTrue(b.work_once())
+            with b.connect() as db:
+                db.execute('UPDATE queue SET due=0')
+        b.initialize()
+        self.assertFalse(b.work_once())
+        self.assertEqual(b.queue_metrics()[3], 1)
+        with b.connect() as db:
+            key = db.execute('SELECT key FROM queue').fetchone()[0]
+        b.retry([key])
+        b.deliver = lambda key, alert: self.calls.append(alert['status'])
+        self.assertTrue(b.work_once())
+        self.assertEqual(self.calls, ['firing'])
+        self.assertEqual(b.queue_metrics()[0], 0)
+
+    def test_failed_firing_does_not_delay_new_resolution(self):
+        b.enqueue(self.a)
+        def remote(key, alert):
+            if alert['status'] == 'firing':
+                b.enqueue(dict(self.a, status='resolved'))
+                raise TimeoutError()
+            self.calls.append(alert['status'])
+        b.deliver = remote
+        b.work_once()
+        self.assertTrue(b.work_once())
+        self.assertEqual(self.calls, ['resolved'])
+
+    def test_invalid_timestamp_and_unbounded_metadata_are_rejected(self):
+        for alert in [dict(self.a, startsAt='not-a-date'), dict(self.a, startsAt='2026-10-08T00:00:00'),
+                      dict(self.a, annotations={'note':'x'*4001})]:
+            with self.assertRaises(ValueError): b.enqueue(alert)
+
+class MigrationTests(unittest.TestCase):
+    def test_existing_sqlite_queue_keeps_completed_and_pending_work(self):
+        import sqlite3
+        with tempfile.TemporaryDirectory() as folder:
+            old_db = b.DB; b.DB = folder+'/queue.db'
+            try:
+                with sqlite3.connect(b.DB) as db:
+                    db.execute("CREATE TABLE queue (key TEXT PRIMARY KEY,payload TEXT NOT NULL,state TEXT NOT NULL,done INTEGER DEFAULT 0,attempts INTEGER DEFAULT 0,due REAL DEFAULT 0,created REAL NOT NULL,error TEXT DEFAULT '')")
+                    db.execute("INSERT INTO queue VALUES('completed','{}','resolved',1,0,0,1,'')")
+                    db.execute("INSERT INTO queue VALUES('pending','{}','firing',0,1,0,2,'ConnectionError')")
+                b.initialize(); b.initialize()
+                with b.connect() as db:
+                    self.assertEqual(db.execute('SELECT key,done,revision,delivered_revision,attempts FROM queue ORDER BY key').fetchall(),
+                                     [('completed',1,1,1,0),('pending',0,1,0,1)])
+            finally: b.DB=old_db
+
+
+class WorkerHealthTests(QueueFixture):
+    def test_stalled_worker_is_not_ready_but_ingestion_remains_available(self):
+        import threading, urllib.request, urllib.error, time
+        token = Path(self.temp.name)/'token'; token.write_text('test-only-token')
+        os.environ['WEBHOOK_TOKEN_FILE'] = str(token)
+        old_expected, old_tick = b.WORKER_EXPECTED, b.LAST_WORKER_TICK
+        b.WORKER_EXPECTED = True; b.LAST_WORKER_TICK = time.monotonic()-b.LEASE_SECONDS-1
+        server = b.ThreadingHTTPServer(('127.0.0.1',0),b.Handler)
+        threading.Thread(target=server.serve_forever,daemon=True).start()
+        base = 'http://127.0.0.1:'+str(server.server_port)
+        try:
+            with self.assertRaises(urllib.error.HTTPError) as failed:
+                urllib.request.urlopen(base+'/health/ready')
+            self.assertEqual(failed.exception.code,503)
+            with urllib.request.urlopen(base+'/health/live') as response:
+                self.assertEqual(response.status,200)
+            request = urllib.request.Request(base+'/alerts',data=json.dumps({'alerts':[self.a]}).encode(),headers={'Authorization':'Bearer test-only-token'})
+            with urllib.request.urlopen(request) as response:
+                self.assertEqual(response.status,202)
+            b.LAST_WORKER_TICK = time.monotonic()
+            with urllib.request.urlopen(base+'/health/ready') as response:
+                self.assertEqual(response.status,200)
+        finally:
+            server.shutdown(); server.server_close(); os.environ.pop('WEBHOOK_TOKEN_FILE')
+            b.WORKER_EXPECTED, b.LAST_WORKER_TICK = old_expected, old_tick
+
+
+class LocalReceiverTests(QueueFixture):
+    def test_internal_mock_bypasses_ambient_external_proxy(self):
+        import threading
+        from unittest.mock import patch
+        class Receiver(b.BaseHTTPRequestHandler):
+            def log_message(self,*args): pass
+            def do_POST(self):
+                self.rfile.read(int(self.headers['Content-Length']))
+                self.send_response(200); self.send_header('Content-Type','application/json'); self.end_headers()
+                self.wfile.write(b'{"result":{"status":"accepted"}}')
+        password = Path(self.temp.name)/'password'; password.write_text('test-only-password')
+        server = b.ThreadingHTTPServer(('127.0.0.1',0),Receiver)
+        threading.Thread(target=server.serve_forever,daemon=True).start()
+        try:
+            with patch.dict(os.environ,{
+                'ALLOW_HTTP_MOCK':'true','SERVICENOW_URL':'http://127.0.0.1:'+str(server.server_port),
+                'SERVICENOW_USERNAME':'test-only','SERVICENOW_PASSWORD_FILE':str(password),
+                'http_proxy':'http://127.0.0.1:1','HTTP_PROXY':'http://127.0.0.1:1','no_proxy':'','NO_PROXY':'',
+            }):
+                self.assertEqual(b.request('POST','/api/x_boutique/alerts/upsert',{'key':'a'*64}), {'status':'accepted'})
+        finally: server.shutdown(); server.server_close()
+
+if __name__ == '__main__': unittest.main()

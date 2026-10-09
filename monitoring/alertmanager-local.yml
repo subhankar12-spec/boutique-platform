@@ -15,6 +15,7 @@ route:
     matchers:
     - environment="production"
     - severity="critical"
+    - incident_delivery!="disabled"
     continue: true
   - receiver: slack
     matchers:
@@ -34,11 +35,10 @@ receivers:
   - api_url_file: /run/secrets/slack_webhook
     send_resolved: true
     title: '[{{ .Status | toUpper }}] {{ .CommonLabels.alertname }}'
-    text: '{{ range .Alerts }}{{ .Annotations.summary }}
-
+    text: |-
+      {{ range .Alerts }}{{ .Annotations.summary }}
       {{ .Annotations.runbook_url }}
-
-      {{ end }}'
+      {{ end }}
 - name: servicenow
   webhook_configs:
   - url: http://incident-bridge:8084/alerts

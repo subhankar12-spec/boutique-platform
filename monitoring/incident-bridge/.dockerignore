@@ -1,0 +1,6 @@
+*
+!Dockerfile
+!bridge.py
+!test_bridge.py
+!test_postgres.py
+!requirements.txt

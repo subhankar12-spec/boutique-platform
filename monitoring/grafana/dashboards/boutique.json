@@ -154,9 +154,9 @@
       },
       "targets": [
         {
-          "expr": "boutique_incident_pending",
+          "expr": "boutique:incident:pending",
           "refId": "A",
-          "legendFormat": "{{service}} {{environment}}"
+          "legendFormat": "{{cluster}} {{environment}}"
         }
       ]
     },
@@ -176,9 +176,9 @@
       },
       "targets": [
         {
-          "expr": "boutique_incident_oldest_seconds",
+          "expr": "boutique:incident:oldest_seconds",
           "refId": "A",
-          "legendFormat": "{{service}} {{environment}}"
+          "legendFormat": "{{cluster}} {{environment}}"
         }
       ]
     },
@@ -236,7 +236,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 40,
+        "y": 48,
         "w": 24,
         "h": 10
       },
@@ -244,6 +244,72 @@
         {
           "expr": "{environment=~\"$environment\",service=~\"frontend|catalogue|cart|orders\"}",
           "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "Incident dead letters",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 32,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "expr": "boutique:incident:dead_letters",
+          "refId": "A",
+          "legendFormat": "{{cluster}} {{environment}}"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "type": "timeseries",
+      "title": "Incident worker heartbeat age seconds",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 40,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "expr": "boutique_incident_worker_heartbeat_age_seconds{job=\"incident-bridge\"}",
+          "refId": "A",
+          "legendFormat": "{{cluster}} {{pod}}"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "type": "timeseries",
+      "title": "Incident bridge scrape availability",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 40,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "expr": "up{job=\"incident-bridge\"}",
+          "refId": "A",
+          "legendFormat": "{{cluster}} {{pod}}"
         }
       ]
     }

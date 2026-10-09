@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "node_image": "kindest/node:v1.34.11@sha256:44e222ee2132dab25ff87301682f89eb82c7880ea3a1bf543bfe9708fd08d67d",
+  "probe_image": "curlimages/curl:8.17.0@sha256:935d9100e9ba842cdb060de42472c7ca90cfe9a7c96e4dacb55e79e560b3ff40",
+  "kind": {
+    "version": "0.33.0",
+    "url": "https://github.com/kubernetes-sigs/kind/releases/download/v0.33.0/kind-linux-amd64",
+    "sha256": "aee6151561422756b764a4ae28e7f44cda5af5a9eead3cc9985112b1de8d8e0d"
+  },
+  "manifests": {
+    "calico": {
+      "url": "https://raw.githubusercontent.com/projectcalico/calico/fbaa371111636a37ecc82625fce8453064a7fff2/manifests/calico.yaml",
+      "sha256": "2de8f47595fb9c41b3f47d7b767a1f8e72ecf84057af834738ff12689a234da5"
+    },
+    "argocd": {
+      "url": "https://raw.githubusercontent.com/argoproj/argo-cd/d6d5b248ce00e1a2c512068002a93d3319767087/manifests/install.yaml",
+      "sha256": "1feb02cc7bacf3a379da58b0ca8c6f07d18288cd04d531dabd08816375e5e010"
+    },
+    "cert-manager": {
+      "url": "https://github.com/cert-manager/cert-manager/releases/download/v1.21.2/cert-manager.yaml",
+      "sha256": "e03b668ec8675214af6b0a671699d088f2601fa3878e0dbe1b41d3feafd1879f"
+    },
+    "traefik": {
+      "url": "https://github.com/traefik/traefik-helm-chart/releases/download/v41.7.0/traefik.yaml",
+      "sha256": "f2c96c08f45889d53ff2ffb6d75124a7e604119a8b24756149263d2e9ac142e5"
+    }
+  },
+  "controller_images": {
+    "ghcr.io/dexidp/dex:v2.45.1": "ghcr.io/dexidp/dex:v2.45.1@sha256:8499afd690c437f52301efd2b05b2455da5bd2dfc20332cd697dc9937f808462",
+    "public.ecr.aws/docker/library/redis:8.2.3-alpine": "docker.io/redis:8.2.3-alpine@sha256:08ad0b1d280850169a790dba1393ff7a90aef951fc19632cf4d3ce4f78e679ba",
+    "quay.io/argoproj/argocd:v3.5.4": "quay.io/argoproj/argocd:v3.5.4@sha256:49dff79439bb38b1b942b19a113fe1fec7e6b6c671ddf9fe6a4a7c46bde0b77b",
+    "quay.io/calico/calico:v3.33.0": "quay.io/calico/calico:v3.33.0@sha256:4ebc20730127bc9e8bf1db5f5a2d8b58cf37fe0e891b3c7b5471992221d213e5",
+    "quay.io/calico/node:v3.33.0": "quay.io/calico/node:v3.33.0@sha256:565d8db3200e443955557f8f28ff44ab8a4a456754bc74a19c4f2f3444af9b1c",
+    "quay.io/calico/third-party-cni-plugins:v3.33.0": "quay.io/calico/third-party-cni-plugins:v3.33.0@sha256:0f32f48279484c0d6f0e0d0e767b2d0e1a6c6ca34cb3421a61b989d992f3df41",
+    "quay.io/jetstack/cert-manager-cainjector:v1.21.2": "quay.io/jetstack/cert-manager-cainjector:v1.21.2@sha256:c85268c64f2e0e76684bf5fe8906caff34b82523561c6affe0fae3546bd87562",
+    "quay.io/jetstack/cert-manager-controller:v1.21.2": "quay.io/jetstack/cert-manager-controller:v1.21.2@sha256:70f532fd9cfde0b09d55687200942399d89838bc2d5d5b45152eb799a15912b8",
+    "quay.io/jetstack/cert-manager-webhook:v1.21.2": "quay.io/jetstack/cert-manager-webhook:v1.21.2@sha256:a60e2dac46dbb8a7f3df95c54ce941012f54c2fe022f0ee55aaa1ab40ed957ae",
+    "docker.io/traefik:v3.7.14": "docker.io/traefik:v3.7.14@sha256:575fa15b135078fe5e50aa847987d96dbddd7b093c172429618404df73f3fa7c"
+  }
+}

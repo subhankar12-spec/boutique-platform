@@ -1,0 +1,28 @@
+{
+  "jenkinsVersion": "2.580.1",
+  "plugins": 74,
+  "passed": true,
+  "declarativeFiles": [
+    "service-reference.Jenkinsfile",
+    "bootstrap.Jenkinsfile",
+    "gitops-check.Jenkinsfile",
+    "promote.Jenkinsfile",
+    "rollback.Jenkinsfile",
+    "verify.Jenkinsfile",
+    "Jenkinsfile"
+  ],
+  "runtimeBuilds": [
+    {
+      "_class": "org.jenkinsci.plugins.workflow.job.WorkflowRun",
+      "building": false,
+      "number": 1,
+      "result": "SUCCESS"
+    },
+    {
+      "_class": "org.jenkinsci.plugins.workflow.job.WorkflowRun",
+      "building": false,
+      "number": 2,
+      "result": "FAILURE"
+    }
+  ]
+}

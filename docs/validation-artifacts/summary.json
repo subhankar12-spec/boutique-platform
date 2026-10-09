@@ -1,0 +1,30 @@
+{
+  "validation_date": "2026-10-09",
+  "scope": "Current cloud workspace; no live GitHub delivery, Kubernetes installation or AWS provisioning",
+  "passed": {
+    "configuration_and_delivery_tests": 62,
+    "lab_safety_tests": 11,
+    "postgres_queue_integration_tests": 5,
+    "jenkins_locked_plugins": 74,
+    "jenkins_declarative_definitions": 7,
+    "jenkins_release_seed_jobs": 11,
+    "jenkins_validation_seed_jobs": 6,
+    "jenkins_tool_integrity_tests": 10,
+    "pinned_agent_tools_executed": 8,
+    "source_high_critical_secret_findings": 0,
+    "application_smoke_checks": 12,
+    "postgres_and_redis_tls_acceptance_and_rejection": true,
+    "monitoring_rule_and_receiver_routing_checks": true
+  },
+  "unverified": [
+    "Full Jenkins-to-GitHub-to-Kubernetes delivery",
+    "Two-cluster Kubernetes runtime and network policy drills",
+    "Complete Jenkins agent image build and scan (Debian snapshot access denied)",
+    "AWS plan/apply and cloud recovery",
+    "Live Slack notifications and ServiceNow scripted resource"
+  ],
+  "blocked": [
+    "GitHub repository creation: HTTP 403 Resource not accessible by integration",
+    "Nested Kubernetes: insufficient Docker storage and restricted cgroups"
+  ]
+}

@@ -91,6 +91,37 @@ scrape_configs:
   - targets:
     - alertmanager:9093
 - job_name: incident-bridge
-  static_configs:
-  - targets:
-    - incident-bridge:8084
+  metrics_path: /metrics
+  kubernetes_sd_configs:
+  - role: pod
+    namespaces:
+      names:
+      - monitoring
+    selectors:
+    - role: pod
+      label: app=incident-bridge
+  relabel_configs:
+  - source_labels:
+    - __meta_kubernetes_pod_container_name
+    regex: incident-bridge
+    action: keep
+  - source_labels:
+    - __meta_kubernetes_pod_container_port_name
+    regex: http
+    action: keep
+  - source_labels:
+    - __meta_kubernetes_pod_phase
+    regex: Running
+    action: keep
+  - source_labels:
+    - __meta_kubernetes_pod_name
+    target_label: pod
+  - source_labels:
+    - __meta_kubernetes_namespace
+    target_label: namespace
+  - target_label: service
+    replacement: incident-bridge
+  - target_label: environment
+    replacement: production
+  - target_label: cluster
+    replacement: production
