@@ -37,7 +37,7 @@ Use [agent setup](../../boutique-ci/jenkins/agents/README.md) for WebSocket conn
 
 ## Repository and job wiring
 
-1. Publish the eight independent repositories under `subhankar12-spec`, preserving their `main` branches. The current integration cannot create/push them; see [validation](validation.md). Argo and SCM jobs require reachable published sources.
+1. Confirm access to the eight published repositories under `subhankar12-spec`, preserving their `main` branches; their source commits were pushed and verified against GitHub (see [validation](validation.md)). Argo and SCM jobs need their own scoped credentials to read these sources.
 2. Configure scoped `github-read` credentials on each controller. The JCasC shared library retrieves `boutique-ci` at the reviewed `BOUTIQUE_CI_LIBRARY_REF`.
 3. Run the reviewed `jenkins/jobs/validation.groovy` seed on validation. It generates application/platform/GitOps multibranch jobs with origin PR discovery and no fork PR discovery. Configure signed GitHub webhooks and the service-required checks.
 4. Run `jenkins/jobs/release.groovy` on release. It generates main-only service/platform multibranch jobs, `boutique-bootstrap`, `boutique-promote`, `boutique-verify`, `boutique-rollback`, `boutique-gitops-check` and `boutique-infrastructure`.

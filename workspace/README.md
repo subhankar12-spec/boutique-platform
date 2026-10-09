@@ -41,7 +41,7 @@ Monitoring includes Prometheus, Grafana dashboards, Alertmanager, Loki/Alloy, pr
 
 The app's functional smoke checks, real database/client TLS tests, queue integration tests, signed-delivery policy tests and actual Jenkins controller/plugin/pipeline checks have been exercised. See [validation](boutique-platform/docs/validation.md) for their scope.
 
-This cloud runner cannot validate the full two-cluster deployment: it has insufficient Docker disk space and restricted cgroups. GitHub repository creation was denied by the installed integration (HTTP 403); publication remains blocked. Local commits and recoverable source/Git archives preserve the work. Saving cloud environment configuration does not publish GitHub repositories or activate the environment draft.
+This cloud runner cannot validate the full two-cluster deployment: it has insufficient Docker disk space and restricted cgroups. All eight repositories are published under `subhankar12-spec`, with their `main` commits verified against GitHub. The owner created the repositories and granted the integration access; repository creation from this runner remains unavailable. Local source/Git archives preserve the work. Saving cloud environment configuration does not push repositories or activate the environment draft.
 
 Start with [production lab setup](boutique-platform/docs/production-lab.md), [Jenkins setup](boutique-platform/docs/jenkins-setup.md), [delivery evidence](boutique-gitops/docs/release-evidence.md), and the [AWS infrastructure guide](boutique-infrastructure/README.md).
 

@@ -13,6 +13,7 @@ The checks below were exercised in this cloud workspace. They establish the stat
 | Terraform | State bootstrap, nonproduction and production initialization/validation/formatting; dedicated monitoring-data bootstrap exercised against a disposable TLS PostgreSQL instance |
 | Jenkins | Jenkins 2.580.1 with 74 official checksum-locked plugins; real plugin-backed Declarative/Job DSL checks, JCasC and isolated downstream-job/environment-lock execution |
 | Tools and controllers | Official CLI checksums and lab controller manifest/image locks verified |
+| GitHub source publication | Eight repositories pushed through the platform integration; each remote `main` commit verified against its local branch |
 | Data TLS | Disposable PostgreSQL/Redis connections accept the correct CA/hostname and reject the wrong CA, wrong hostname and plaintext PostgreSQL |
 | Incident delivery | Unit/mock lifecycle checks, real shared PostgreSQL queue integration and two running adapter replicas exercising deduplication, resolution and late-firing suppression |
 | Observability | Prometheus targets/rules, Alertmanager/Alloy configs, provisioned Grafana dashboard/data sources, real Alloy-to-Loki logs and mock Slack/ServiceNow delivery |
@@ -23,7 +24,7 @@ The local application smoke suite uses explicit failures rather than Python asse
 
 The cloud runner cannot validate the full Kubernetes path: Docker uses VFS with insufficient free storage for the lab, and cgroups are read-only. Earlier nested kind control-plane health failed; the new preflight blocks creation before expensive pulls. Argo reconciliation, Kubernetes rollouts, live network-policy enforcement, Kubernetes restore drills and real Jenkins-to-cluster execution remain unverified here. Run the [production lab](production-lab.md) on a supported Docker host and retain the signed outputs of each environment's verification.
 
-GitHub repository creation/push is blocked by the current integration's `403 Resource not accessible by integration` response. Real repository protection, SCM webhooks/indexing, GHCR publication, approved PR merge and the end-to-end delivery chain have not run against GitHub. The isolated Jenkins tests use temporary local jobs and do not inherit GitHub/cloud credentials.
+All eight repositories have been pushed under `subhankar12-spec`; their remote `main` commits match the local branches. The owner created the empty repositories and granted the platform integration access. Repository creation from this runner still returns `403 Resource not accessible by integration`, but publishing to those existing repositories works without the dedicated publication token. Real repository protection, SCM webhooks/indexing, GHCR publication, approved PR merge and the end-to-end delivery chain have not run against GitHub. The isolated Jenkins tests use temporary local jobs and do not inherit GitHub/cloud credentials.
 
 AWS account roles, backend settings, domain/DNS, platform controller bootstrap and cost inputs require target configuration. No AWS plan/apply or billable resource provisioning was performed. Terraform validation does not prove IAM permissions, quotas, infrastructure readiness or private endpoint connectivity.
 

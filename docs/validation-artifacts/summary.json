@@ -19,7 +19,8 @@
     "terraform_audit_mock_tests": 4,
     "helm_release_json_schemas": true,
     "additional_helm_collections_preserving_previous_resources": 11,
-    "active_legacy_renderer_configurations": 0
+    "active_legacy_renderer_configurations": 0,
+    "github_repositories_pushed_and_verified": 8
   },
   "unverified": [
     "Full Jenkins-to-GitHub-to-Kubernetes delivery",
@@ -31,7 +32,7 @@
     "Optional reviewed-version CloudWatch Observability addon"
   ],
   "blocked": [
-    "GitHub repository creation: HTTP 403 Resource not accessible by integration",
+    "Creating additional GitHub repositories from this runner: HTTP 403 Resource not accessible by integration (owner created the eight project repositories)",
     "Nested Kubernetes: insufficient Docker storage and restricted cgroups"
   ]
 }

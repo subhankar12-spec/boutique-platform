@@ -31,7 +31,7 @@ Git and registry recovery require the exact reviewed commits, signed records and
 
 There is **no deployed secondary region/account, automated failover, cross-region backup replication or complete DR acceptance result**. Multi-AZ RDS/Redis reduces some availability failures within one region; it does not establish regional DR. Separate kind clusters share the laptop/VM and do not survive loss of that host without independent backups.
 
-The local verified Git bundles/source ZIP live on the same workspace host. They preserve source work but are not an off-host DR copy and exclude ignored secrets, database volumes and controller state. GitHub publication and full Kubernetes/AWS recovery remain unverified; source reconstruction is not proof of data recovery.
+The local verified Git bundles/source ZIP live on the same workspace host. They preserve source work but are not an off-host DR copy and exclude ignored secrets, database volumes and controller state. All eight source repositories are now published to GitHub with matching `main` commits. Full Kubernetes/AWS recovery remains unverified; remote source availability and source reconstruction do not prove data recovery or replace off-host state/secrets backups.
 
 Regional/account-loss recovery needs a separately reviewed backup location, replication/retention, key and access design, infrastructure/DNS procedure and measured exercise before an RTO/RPO can be accepted. No regional-recovery target is claimed by this implementation.
 
