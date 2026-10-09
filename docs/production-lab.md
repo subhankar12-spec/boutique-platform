@@ -152,3 +152,7 @@ The new dev/staging/production profiles render. All four controller source check
 The runner's Docker storage uses VFS, has less than the required 30 GiB free, and exposes read-only cgroups to this process. Earlier nested kind failed kubelet/control-plane health. The doctor therefore blocks cluster creation before pulling node images. Kubernetes controller installation, Argo reconciliation, live network-policy enforcement, Kubernetes restore and real Jenkins-to-cluster execution remain unverified here; run them on the documented supported host. Existing Docker Compose application/data were preserved.
 
 Monitoring also uses Helm: `monitoring/` is the shared chart, `monitoring/profiles/<cluster>/values.yaml` selects discovery and queue behavior, and `lab-profiles/monitoring/<cluster>/values.yaml` enables internal fixtures and the local production TLS queue. The deployment helper and Argo Application select these same value files. Select the adapter digest in the cloud profile values; it applies to the lab too.
+
+## Recovery acceptance
+
+Use [recovery-targets.md](recovery-targets.md) and the [DR runbook](runbooks/disaster-recovery.md) to record end-to-end RTO/RPO. The existing isolated `restore-drill` measures only a database step; it does not prove host/cluster disaster recovery. Recovering on a separate host with off-host backups is the intended quarterly exercise.

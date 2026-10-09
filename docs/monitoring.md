@@ -63,3 +63,7 @@ For incident backlog: check bridge readiness, PostgreSQL or SQLite availability/
 `python -m unittest discover -s monitoring/incident-bridge -p 'test_*.py' -v` covers SQLite retry, schema migration, authentication, health and resolution races. The dedicated PostgreSQL integration runner in the adapter directory tests independent worker processes, locked-row skipping, leases and concurrent resolution against a disposable real database. A two-container HTTP drill created twenty unique mock incidents from duplicate concurrent batches, resolved all twenty and verified that delayed firing did not reopen them.
 
 Promtool rule tests verify shared-queue aggregation, backlog thresholds, dead letters, individual worker health and missing targets. Amtool route tests verify that delivery-path alerts reach Slack only while critical production application alerts reach both receivers. These tests send no external notifications. Local runtime tests establish the exercised worker behavior, not live ServiceNow ACL/business-rule compatibility, a successful Kubernetes deployment, or monitoring-wide HA readiness.
+
+## Reliability objectives
+
+See [slo.md](slo.md) for request eligibility, frontend-only PromQL, error budgets and measurement limits. Current seven-day Prometheus retention cannot support a complete 30-day scorecard. Automated SLO burn-rate alerts and continuous external journey probes remain future activation work.

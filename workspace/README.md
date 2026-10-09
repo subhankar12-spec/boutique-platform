@@ -48,3 +48,5 @@ Start with [production lab setup](boutique-platform/docs/production-lab.md), [Je
 Application charts and AWS telemetry: see `boutique-gitops/docs/helm-delivery.md` and `boutique-infrastructure/docs/aws-observability.md`.
 
 Monitoring, alert lab fixtures, optional local data resources and monitoring External Secrets also use Helm charts; Argo CD, Jenkins checks and operational scripts select their reviewed values.
+
+Reliability policies: [SLOs](boutique-platform/docs/slo.md), [RTO/RPO targets](boutique-platform/docs/recovery-targets.md) and the [DR runbook](boutique-platform/docs/runbooks/disaster-recovery.md). These define targets and acceptance; full disaster recovery remains untested.

@@ -21,3 +21,5 @@ See [validation.md](docs/validation.md) for what ran and what remains unverified
 Application delivery uses service-owned Helm charts and separate dev/staging/production values; see [Helm delivery](../boutique-gitops/docs/helm-delivery.md). AWS monitoring and audit are described in [AWS observability](../boutique-infrastructure/docs/aws-observability.md).
 
 Monitoring, alert lab fixtures, optional local data resources and monitoring External Secrets also use Helm charts; Argo CD, Jenkins checks and operational scripts select their reviewed values.
+
+[SLOs](docs/slo.md), [RTO/RPO targets](docs/recovery-targets.md) and the [DR runbook](docs/runbooks/disaster-recovery.md) define intended reliability and recovery acceptance. Targets are unproven until exercised; backup automation/off-host storage and regional DR remain pending.
