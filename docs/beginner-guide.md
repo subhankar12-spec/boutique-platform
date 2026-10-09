@@ -1,5 +1,9 @@
 # Shipyard Boutique: a beginner's complete architecture and deployment guide
 
+**Want to get the app running first?** Follow the
+[eight-step Debian + kind deployment walkthrough](deploy-local-kind.md).
+Return to this document for the architecture and full Jenkins delivery setup.
+
 This is the starting point for understanding and operating this project. You do
 not need to understand every file before starting. Work through the checkpoints,
 and return to the repository maps when a command or pipeline mentions a file.

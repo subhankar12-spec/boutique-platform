@@ -1,6 +1,8 @@
 # Runtime and operating guides
 
-**Start here:** the [beginner architecture and deployment guide](docs/beginner-guide.md) explains all eight repositories, the application request flow, and step-by-step Debian/Compose/existing-kind deployment. It then walks through Jenkins agents and credentials, the two-cluster dev/staging/production lab, signed releases, monitoring, AWS, troubleshooting and recovery.
+**Deploy first:** follow the [eight-step Debian + kind walkthrough](docs/deploy-local-kind.md) to build, deploy and open the app on your laptop.
+
+**Understand the architecture:** the [complete beginner guide](docs/beginner-guide.md) explains all eight repositories, the application request flow, and step-by-step Debian/Compose/existing-kind deployment. It then walks through Jenkins agents and credentials, the two-cluster dev/staging/production lab, signed releases, monitoring, AWS, troubleshooting and recovery.
 
 Run `./scripts/local-up.sh` for Docker Compose and functional smoke checks. Secrets and database volumes are preserved on reruns. This is the fastest application development workflow.
 
