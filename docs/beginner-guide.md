@@ -1425,12 +1425,15 @@ docker run --rm --name boutique-trusted-deploy --network host \
   -e JENKINS_URL=http://127.0.0.1:8091/ \
   -e JENKINS_AGENT_NAME=boutique-trusted-deploy \
   -e JENKINS_WEB_SOCKET=true \
-  -e JENKINS_SECRET_FILE=/run/secrets/agent-secret \
   -e JENKINS_AGENT_WORKDIR=/workspace \
   -v "$BOUTIQUE_AGENT_SECRET_FILE:/run/secrets/agent-secret:ro" \
   -v "$BOUTIQUE_AGENT_WORKSPACE:/workspace" \
-  boutique-agent:local
+  boutique-agent:local -secret @/run/secrets/agent-secret
 ~~~
+
+The explicit -secret @/run/secrets/agent-secret argument tells Remoting to read
+the mounted secret file. The official entrypoint does not read a secret-file
+environment variable; omitting this argument leaves the connection secret unset.
 
 Linux host networking lets this trusted container reach loopback controller,
 kind API and ingress ports. It does not inherit the host's /etc/hosts;
