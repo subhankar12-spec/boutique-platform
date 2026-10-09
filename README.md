@@ -1,5 +1,7 @@
 # Runtime and operating guides
 
+**Start here:** the [beginner architecture and deployment guide](docs/beginner-guide.md) explains all eight repositories, the application request flow, and step-by-step Debian/Compose/existing-kind deployment. It then walks through Jenkins agents and credentials, the two-cluster dev/staging/production lab, signed releases, monitoring, AWS, troubleshooting and recovery.
+
 Run `./scripts/local-up.sh` for Docker Compose and functional smoke checks. Secrets and database volumes are preserved on reruns. This is the fastest application development workflow.
 
 For production delivery practice on a suitable laptop or Linux VM, follow [production-lab.md](docs/production-lab.md). It creates separate nonprod and production clusters with pinned controllers, TLS, policy enforcement, read-only deployment verification and recovery drills. It uses the same reviewed image digests and Helm chart and image selections as the AWS reference. The older `homelab-up.sh` helper remains a single-cluster bootstrap exercise; the production lab is the preferred delivery path.
