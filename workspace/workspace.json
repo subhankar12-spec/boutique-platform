@@ -11,7 +11,8 @@
     "boutique-platform"
   ],
   "deployment_tracks": [
-    "homelab",
+    "local-development",
+    "production-lab",
     "aws-reference"
   ]
 }
