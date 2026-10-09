@@ -1,0 +1,17 @@
+{
+  "date": "2026-10-09",
+  "helm": "3.22.0",
+  "application_profiles_compared": 9,
+  "identical_resources": true,
+  "delivery_configuration_tests": 68,
+  "audit_terraform_mock_runs": 4,
+  "terraform_roots_validated": [
+    "nonprod",
+    "production",
+    "audit"
+  ],
+  "actual_aws_provisioning": false,
+  "actual_registry_publication": false,
+  "actual_kubernetes_deployment": false,
+  "high_critical_source_secret_findings": 0
+}

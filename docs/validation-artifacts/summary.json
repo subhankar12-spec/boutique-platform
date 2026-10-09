@@ -2,7 +2,7 @@
   "validation_date": "2026-10-09",
   "scope": "Current cloud workspace; no live GitHub delivery, Kubernetes installation or AWS provisioning",
   "passed": {
-    "configuration_and_delivery_tests": 62,
+    "configuration_and_delivery_tests": 68,
     "lab_safety_tests": 11,
     "postgres_queue_integration_tests": 5,
     "jenkins_locked_plugins": 74,
@@ -10,18 +10,23 @@
     "jenkins_release_seed_jobs": 11,
     "jenkins_validation_seed_jobs": 6,
     "jenkins_tool_integrity_tests": 10,
-    "pinned_agent_tools_executed": 8,
+    "pinned_agent_tools_executed": 9,
     "source_high_critical_secret_findings": 0,
     "application_smoke_checks": 12,
     "postgres_and_redis_tls_acceptance_and_rejection": true,
-    "monitoring_rule_and_receiver_routing_checks": true
+    "monitoring_rule_and_receiver_routing_checks": true,
+    "helm_profiles_preserving_previous_resources": 9,
+    "terraform_audit_mock_tests": 4,
+    "helm_release_json_schemas": true
   },
   "unverified": [
     "Full Jenkins-to-GitHub-to-Kubernetes delivery",
     "Two-cluster Kubernetes runtime and network policy drills",
     "Complete Jenkins agent image build and scan (Debian snapshot access denied)",
     "AWS plan/apply and cloud recovery",
-    "Live Slack notifications and ServiceNow scripted resource"
+    "Live Slack notifications and ServiceNow scripted resource",
+    "Live CloudWatch and CloudTrail delivery and SNS subscriptions",
+    "Optional reviewed-version CloudWatch Observability addon"
   ],
   "blocked": [
     "GitHub repository creation: HTTP 403 Resource not accessible by integration",

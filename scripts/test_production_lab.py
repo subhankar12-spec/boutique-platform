@@ -35,7 +35,8 @@ class ProductionLabSafety(unittest.TestCase):
 
     def test_project_destinations_are_scoped_and_profile_inherits_promotion(self):
         project, app = lab.argo_application('production', 'production')
-        self.assertEqual(app['spec']['source']['path'], 'lab-profiles/production')
+        self.assertEqual(app['spec']['source']['path'], 'environments/production')
+        self.assertEqual(app['spec']['source']['helm']['valueFiles'],['values.yaml','releases.yaml','../../lab-profiles/production/values.yaml'])
         self.assertEqual(project['spec']['destinations'], [{'namespace': 'boutique-production', 'server': 'https://kubernetes.default.svc'}])
         self.assertEqual(project['spec']['clusterResourceWhitelist'], [{'group': '', 'kind': 'Namespace'}])
         project, _ = lab.argo_application('production', 'production', monitoring=True)
@@ -89,7 +90,7 @@ class ProductionLabSafety(unittest.TestCase):
         with patch.object(lab,'cluster_state'), patch.object(lab,'run',return_value=rendered) as render, patch.object(lab,'apply') as apply:
             lab.deploy('nonprod',environment='dev')
             self.assertEqual(len(render.call_args_list),1)
-            self.assertEqual(render.call_args.args[0][-1],lab.GITOPS/'lab-profiles/dev')
+            self.assertEqual(render.call_args.args[0],['python3',lab.GITOPS/'scripts/render.py','dev','--profile','lab'])
             app=apply.call_args.args[1]['items'][1]
             self.assertEqual(app['metadata']['name'],'boutique-dev')
             self.assertEqual(app['spec']['destination']['namespace'],'boutique-dev')

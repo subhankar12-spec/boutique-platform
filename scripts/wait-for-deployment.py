@@ -40,6 +40,7 @@ def load_evidence(root):
     source = Path(root) / 'scripts/evidence.py'
     if not source.is_file():
         raise DeploymentError('Trusted GitOps evidence helper is missing')
+    sys.path.insert(0,str(source.parent))
     spec = importlib.util.spec_from_file_location('boutique_wait_evidence', source)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -66,6 +67,8 @@ class TrustedHistory:
             raise DeploymentError('A full protected origin/main revision is required')
         self.ancestor(requested, self.protected_tip)
         self.match_image(requested)
+        from helm_release import selected_chart
+        self.requested_chart=selected_chart(self.root,self.service,self.environment,requested)
 
     def git(self, *arguments):
         return command(['git', '-C', self.root, *arguments]).strip()
@@ -104,22 +107,17 @@ class TrustedHistory:
             return None
         self.ancestor(self.requested, revision)
         self.match_image(revision)
+        from helm_release import selected_chart
+        if selected_chart(self.root,self.service,self.environment,revision)!=self.requested_chart:
+            raise DeploymentError("Selected Helm chart changed after the requested GitOps revision")
         return revision
 
 
 def approved_source(source, environment):
-    if not isinstance(source, dict):
-        raise DeploymentError('Argo source configuration is missing')
-    if source.get('repoURL') != REPOSITORY or source.get('targetRevision') != 'main':
-        raise DeploymentError('Argo must target main in the approved GitOps repository')
-    if source.get('path') not in (f'environments/{environment}', f'lab-profiles/{environment}'):
-        raise DeploymentError('Argo source path is not an approved environment profile')
-    # Images/replicas/plugins supplied through the Application would bypass the
-    # Git commit binding; the supported Applications use plain source paths.
-    if any(source.get(key) for key in ('helm', 'plugin', 'directory')):
-        raise DeploymentError('Argo source overrides are not approved for verification')
-    if source.get('kustomize'):
-        raise DeploymentError('Argo inline Kustomize overrides would bypass trusted GitOps history')
+    # Use the same exact source/value-file contract as signed evidence creation.
+    from helm_release import approved_argo_source
+    try:approved_argo_source(source,environment)
+    except ValueError as error:raise DeploymentError(str(error)) from error
 
 
 def application_revision(application, environment, history):

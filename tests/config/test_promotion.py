@@ -1,6 +1,7 @@
 """Delivery gates against real Git history and real Ed25519 signatures."""
 import datetime as dt
 import json
+import hashlib
 import shutil
 import subprocess
 import sys
@@ -28,6 +29,14 @@ class DeliveryFixture(unittest.TestCase):
         self.public = Path(self.temporary.name) / 'verification-public.pem'
         self.command('openssl', 'genpkey', '-algorithm', 'ED25519', '-out', self.private)
         self.command('openssl', 'pkey', '-in', self.private, '-pubout', '-out', self.public)
+        self.release_private = Path(self.temporary.name) / 'release-private.pem'
+        self.release_public = Path(self.temporary.name) / 'release-public.pem'
+        self.command('openssl', 'genpkey', '-algorithm', 'ED25519', '-out', self.release_private)
+        self.command('openssl', 'pkey', '-in', self.release_private, '-pubout', '-out', self.release_public)
+        self.chart_version='0.1.0-'+'e'*40
+        self.command('helm','package',SOURCE.parent/'boutique-cart/helm','--version',self.chart_version,'--destination',self.temporary.name)
+        self.chart_package=Path(self.temporary.name)/('boutique-cart-'+self.chart_version+'.tgz')
+        self.release_record=self.attest(IMAGE)
         self.git('init', '-b', 'main')
         self.git('config', 'user.email', 'test@example.com')
         self.git('config', 'user.name', 'Delivery gate test')
@@ -61,8 +70,10 @@ class DeliveryFixture(unittest.TestCase):
         if text:
             self.assertIn(text, result.stderr)
 
-    def promote(self, environment, image=IMAGE, evidence=None, public=None):
+    def promote(self, environment, image=IMAGE, evidence=None, public=None, signed=True):
         args = ['cart', environment, image]
+        if signed:
+            args += ['--release-record',self.attest(image),'--release-public-key',self.release_public,'--chart-package',self.chart_package]
         if evidence:
             args += ['--evidence', evidence, '--public-key', public or self.public]
         return self.script('promote.py', *args)
@@ -85,7 +96,7 @@ class DeliveryFixture(unittest.TestCase):
                        'containerStatuses': [{'name': 'cart', 'ready': True, 'imageID': 'containerd://' + image}]},
         }]}
         argo = {'metadata': {'name': 'boutique-' + environment, 'namespace': 'argocd'},
-                'spec': {'source': {'path': 'environments/' + environment, 'repoURL': 'https://github.com/subhankar12-spec/boutique-gitops.git'}, 'destination': {'namespace': 'boutique-' + environment}},
+                'spec': {'source': {'path': 'environments/' + environment, 'repoURL': 'https://github.com/subhankar12-spec/boutique-gitops.git','targetRevision':'main','helm':{'releaseName':'boutique-'+environment,'valueFiles':['values.yaml','releases.yaml']}}, 'destination': {'namespace': 'boutique-' + environment}},
                 'status': {'sync': {'status': 'Synced', 'revision': commit}, 'health': {'status': 'Healthy'}}}
         smoke = {'schema_version': 1, 'environment': environment, 'origin': 'https://' + environment + '.boutique.example.com',
                  'started_at': (now - dt.timedelta(seconds=10)).isoformat(), 'completed_at': (now - dt.timedelta(seconds=1)).isoformat(),
@@ -123,12 +134,32 @@ class DeliveryFixture(unittest.TestCase):
         envelope['signature'] = base64.b64encode(signature.read_bytes()).decode()
         evidence.write_text(json.dumps(envelope))
 
+    def attest(self, image, mutation=None):
+        record={'schema_version':2,'service':'cart','image':image,'source_commit':'e'*40,
+                'build_url':'https://jenkins.example.com/job/boutique-cart/job/main/42/',
+                'tests_passed':True,'security_gate_passed':True,'sbom_sha256':'c'*64,'scan_sha256':'d'*64,
+                'chart':{'name':'boutique-cart','repository':'oci://ghcr.io/subhankar12-spec/charts',
+                         'version':self.chart_version,'package_sha256':hashlib.sha256(self.chart_package.read_bytes()).hexdigest(),'oci_digest':'sha256:'+'c'*64}}
+        if mutation:mutation(record)
+        plain=Path(self.temporary.name)/('release-'+image.rsplit('@',1)[-1].replace(':','')+'.json')
+        envelope=plain.with_name(plain.stem+'-attestation.json')
+        plain.write_text(json.dumps(record))
+        self.assert_success(self.script('release_attestation.py','sign','--record',plain,'--signing-key',self.release_private,'--output',envelope))
+        return envelope
+
     def select(self, environment, image):
-        path = self.root / 'services' / 'cart' / 'overlays' / environment / 'kustomization.yaml'
-        data = yaml.safe_load(path.read_text())
-        data['images'][0].pop('newTag', None)
-        data['images'][0]['digest'] = image.split('@')[1]
-        path.write_text(yaml.safe_dump(data, sort_keys=False))
+        path=self.root/'environments'/environment/'releases.yaml'
+        data=yaml.safe_load(path.read_text())
+        data['cart']['image']={'repository':image.split('@')[0],'digest':image.split('@')[1],'tag':''}
+        path.write_text(yaml.safe_dump(data,sort_keys=False))
+        chartpath=self.root/'environments'/environment/'Chart.yaml'
+        chart=yaml.safe_load(chartpath.read_text());entry=next(d for d in chart['dependencies'] if d['alias']=='cart')
+        old=entry['version'];entry['version']=self.chart_version
+        chartpath.write_text(yaml.safe_dump(chart,sort_keys=False))
+        directory=chartpath.parent/'charts'
+        previous=directory/('boutique-cart-'+old+'.tgz')
+        if previous.exists():previous.unlink()
+        shutil.copyfile(self.chart_package,directory/self.chart_package.name)
 
 
 class PromotionTests(DeliveryFixture):
@@ -140,13 +171,13 @@ class PromotionTests(DeliveryFixture):
         self.assertEqual(result['image'], IMAGE)
 
     def test_missing_evidence_rejected_without_mutation(self):
-        path = self.root / 'services/cart/overlays/staging/kustomization.yaml'
+        path = self.root / 'environments/staging/releases.yaml'
         before = path.read_bytes()
         self.assert_rejected(self.promote('staging'), 'Signed successful dev')
         self.assertEqual(path.read_bytes(), before)
 
     def test_mutable_image_rejected(self):
-        self.assert_rejected(self.promote('dev', 'ghcr.io/subhankar12-spec/boutique-cart:latest'))
+        self.assert_rejected(self.promote('dev', 'ghcr.io/subhankar12-spec/boutique-cart:latest',signed=False))
 
     def test_unselected_preceding_image_rejected(self):
         self.assert_rejected(self.promote('production', evidence=self.dev_evidence), 'already be selected in staging')
@@ -232,7 +263,7 @@ class PromotionTests(DeliveryFixture):
         self.create('dev', mutation=lambda reports: reports['argocd']['spec']['source'].update(repoURL='https://example.com/untrusted.git'), expect_failure=True)
 
     def test_create_accepts_production_lab_argo_profile(self):
-        self.create('dev', mutation=lambda reports: reports['argocd']['spec']['source'].update(path='lab-profiles/dev'))
+        self.create('dev', mutation=lambda reports: reports['argocd']['spec']['source']['helm']['valueFiles'].append('../../lab-profiles/dev/values.yaml'))
 
     def test_create_rejects_smoke_origin_from_another_environment(self):
         self.create('dev', mutation=lambda reports: reports['smoke'].update(origin='https://production.boutique.example.com'), expect_failure=True)
@@ -244,7 +275,7 @@ class PromotionTests(DeliveryFixture):
         self.select('production', OTHER_IMAGE)
         self.commit()
         result = self.script('rollback.py', 'cart', 'production', IMAGE, '--evidence', evidence,
-                             '--public-key', self.public, '--current-image', OTHER_IMAGE)
+                             '--public-key', self.public, '--current-image', OTHER_IMAGE, '--release-record',self.release_record,'--release-public-key',self.release_public,'--chart-package',self.chart_package)
         output = self.assert_success(result)
         self.assertEqual(output['image'], IMAGE)
         self.assertEqual(output['previous_image'], OTHER_IMAGE)
@@ -253,7 +284,7 @@ class PromotionTests(DeliveryFixture):
         self.select('production', OTHER_IMAGE)
         self.commit()
         result = self.script('rollback.py', 'cart', 'production', IMAGE, '--evidence', self.dev_evidence,
-                             '--public-key', self.public, '--current-image', OTHER_IMAGE)
+                             '--public-key', self.public, '--current-image', OTHER_IMAGE, '--release-record',self.release_record,'--release-public-key',self.release_public,'--chart-package',self.chart_package)
         self.assert_rejected(result, 'environment does not match')
 
     def test_rollback_rejects_stale_current_selection(self):
@@ -263,35 +294,14 @@ class PromotionTests(DeliveryFixture):
         self.select('production', OTHER_IMAGE)
         self.commit()
         result = self.script('rollback.py', 'cart', 'production', IMAGE, '--evidence', evidence,
-                             '--public-key', self.public, '--current-image', IMAGE)
+                             '--public-key', self.public, '--current-image', IMAGE, '--release-record',self.release_record,'--release-public-key',self.release_public,'--chart-package',self.chart_package)
         self.assert_rejected(result, 'Current environment image changed')
 
 
 class DeliveryRecordTests(DeliveryFixture):
-    def setUp(self):
-        super().setUp()
-        self.release_private = Path(self.temporary.name) / 'release-private.pem'
-        self.release_public = Path(self.temporary.name) / 'release-public.pem'
-        self.command('openssl', 'genpkey', '-algorithm', 'ED25519', '-out', self.release_private)
-        self.command('openssl', 'pkey', '-in', self.release_private, '-pubout', '-out', self.release_public)
-        self.release_record = self.attest(IMAGE)
-
-    def attest(self, image, mutation=None):
-        record = {'schema_version': 1, 'service': 'cart', 'image': image,
-                  'source_commit': 'e' * 40, 'build_url': 'https://jenkins.example.com/job/boutique-cart/job/main/42/',
-                  'tests_passed': True, 'security_gate_passed': True, 'sbom_sha256': 'c' * 64, 'scan_sha256': 'd' * 64}
-        if mutation:
-            mutation(record)
-        plain = Path(self.temporary.name) / 'release.json'
-        envelope = Path(self.temporary.name) / 'release-attestation.json'
-        plain.write_text(json.dumps(record))
-        self.assert_success(self.script('release_attestation.py', 'sign', '--record', plain,
-                                       '--signing-key', self.release_private, '--output', envelope))
-        return envelope
-
     def promote_with_release(self, environment, image=IMAGE, evidence=None):
         args = ['cart', environment, image, '--release-record', self.release_record,
-                '--release-public-key', self.release_public]
+                '--release-public-key', self.release_public,'--chart-package',self.chart_package]
         if evidence:
             args += ['--evidence', evidence, '--public-key', self.public]
         return self.script('promote.py', *args)
@@ -305,15 +315,15 @@ class DeliveryRecordTests(DeliveryFixture):
 
     def test_dev_requires_signed_release_record_in_pr(self):
         base = self.git('rev-parse', 'HEAD')
-        self.assert_success(self.promote('dev', OTHER_IMAGE))
+        self.assert_success(self.promote('dev', OTHER_IMAGE, signed=False))
         self.commit()
         self.assert_rejected(self.gate(base), 'requires a new signed delivery record')
 
     def test_registry_rename_cannot_bypass_image_change_gate(self):
         base = self.git('rev-parse', 'HEAD')
-        path = self.root / 'services/cart/overlays/dev/kustomization.yaml'
+        path = self.root / 'environments/dev/releases.yaml'
         data = yaml.safe_load(path.read_text())
-        data['images'][0]['newName'] = 'registry.example.com/unscanned-cart'
+        data['cart']['image']['repository'] = 'registry.example.com/unscanned-cart'
         path.write_text(yaml.safe_dump(data, sort_keys=False))
         self.commit()
         self.assert_rejected(self.gate(base), 'requires a new signed delivery record')
@@ -361,18 +371,18 @@ class DeliveryRecordTests(DeliveryFixture):
 
     def test_stale_base_target_selection_requires_replanning(self):
         self.assert_success(self.promote_with_release('staging', evidence=self.dev_evidence))
-        manifest = self.root / 'services/cart/overlays/staging/kustomization.yaml'
+        manifest = self.root / 'environments/staging/releases.yaml'
         planned_manifest = manifest.read_bytes()
         path = self.delivery_record('staging')
         planned_record = path.read_bytes()
-        self.git('checkout', 'HEAD', '--', 'services/cart/overlays/staging/kustomization.yaml')
+        self.git('checkout', 'HEAD', '--', 'environments/staging/releases.yaml')
         path.unlink()
         self.select('staging', OTHER_IMAGE)
         new_base = self.commit()
         manifest.write_bytes(planned_manifest)
         path.write_bytes(planned_record)
         self.commit()
-        self.assert_rejected(self.gate(new_base), 'base image changed')
+        self.assert_rejected(self.gate(new_base), 'base chart changed')
 
     def test_changed_preceding_environment_selection_rejected(self):
         self.assert_success(self.promote_with_release('staging', evidence=self.dev_evidence))
@@ -382,6 +392,15 @@ class DeliveryRecordTests(DeliveryFixture):
         self.git('stash', 'pop')
         self.commit()
         self.assert_rejected(self.gate(new_base), 'Preceding environment image changed')
+
+    def test_changed_preceding_chart_with_same_image_rejected(self):
+        self.assert_success(self.promote_with_release('staging', evidence=self.dev_evidence))
+        self.git('stash', 'push', '--include-untracked')
+        target=self.root/'environments/dev/charts'/self.chart_package.name
+        data=bytearray(target.read_bytes());data[4]=(data[4]+1)%256;target.write_bytes(data)
+        base=self.commit()
+        self.git('stash','pop');self.commit()
+        self.assert_rejected(self.gate(base),'Preceding environment chart changed')
 
     def test_record_without_matching_image_change_rejected(self):
         base = self.git('rev-parse', 'HEAD')
@@ -397,7 +416,7 @@ class DeliveryRecordTests(DeliveryFixture):
         base = self.commit()
         result = self.script('rollback.py', 'cart', 'production', IMAGE, '--evidence', proof,
                              '--public-key', self.public, '--current-image', OTHER_IMAGE,
-                             '--release-record', self.release_record, '--release-public-key', self.release_public)
+                             '--release-record', self.release_record, '--release-public-key', self.release_public,'--chart-package',self.chart_package)
         self.assert_success(result)
         self.commit()
         self.assert_success(self.gate(base))
@@ -413,27 +432,49 @@ class DeliveryRecordTests(DeliveryFixture):
         self.assert_success(result)
 
 
-@unittest.skipUnless(shutil.which('kubectl'), 'kubectl required for real Kustomize policy tests')
+@unittest.skipUnless(shutil.which('helm'), 'helm required for real chart policy tests')
 class RenderedImagePolicyTests(DeliveryFixture):
     def render_gate(self):
         return self.script('check_rendered_images.py')
 
-    def test_real_kustomize_profiles_match_overlay_image_selections(self):
+    def test_real_helm_profiles_match_release_image_selections(self):
         self.assert_success(self.render_gate())
 
-    def test_base_image_registry_change_cannot_bypass_overlay_gate(self):
-        path = self.root / 'services/cart/base/deployment.yaml'
-        data = yaml.safe_load(path.read_text())
-        data['spec']['template']['spec']['containers'][0]['image'] = 'evil.example.com/cart@sha256:' + 'c' * 64
-        path.write_text(yaml.safe_dump(data, sort_keys=False))
-        self.assert_rejected(self.render_gate(), 'bypasses its environment overlay')
+    def test_lab_image_override_cannot_bypass_release_gate(self):
+        path=self.root/'lab-profiles/dev/values.yaml';data=yaml.safe_load(path.read_text())
+        data.setdefault('cart',{})['image']={'repository':'boutique-cart','digest':'','tag':'local'}
+        path.write_text(yaml.safe_dump(data,sort_keys=False))
+        self.assert_rejected(self.render_gate(),'bypasses its Helm release')
 
     def test_unscanned_init_container_rejected(self):
-        path = self.root / 'services/cart/base/deployment.yaml'
-        data = yaml.safe_load(path.read_text())
-        data['spec']['template']['spec']['initContainers'] = [{'name': 'unscanned', 'image': 'evil.example.com/sidecar:latest'}]
-        path.write_text(yaml.safe_dump(data, sort_keys=False))
-        self.assert_rejected(self.render_gate(), 'Unapproved app sidecar')
+        path=self.root/'environments/dev/values.yaml';data=yaml.safe_load(path.read_text())
+        data.setdefault('cart',{}).setdefault('deployment',{}).setdefault('template',{}).setdefault('spec',{})['initContainers']=[{'name':'unscanned','image':'evil.example.com/sidecar:latest'}]
+        path.write_text(yaml.safe_dump(data,sort_keys=False))
+        self.assert_rejected(self.render_gate(),'Unapproved app sidecar')
+
+    def test_unsigned_chart_package_change_rejected(self):
+        base=self.git('rev-parse','HEAD')
+        target=self.root/'environments/dev/charts'/self.chart_package.name
+        data=bytearray(target.read_bytes());data[4]=(data[4]+1)%256;target.write_bytes(data)
+        self.commit()
+        result=self.script('check_delivery_change.py','--base',base,'--release-public-key',self.release_public,'--evidence-public-key',self.public)
+        self.assert_rejected(result,'signed delivery record')
+
+    def test_extra_image_in_statefulset_rejected(self):
+        (self.root/'environments/dev/templates/extra.yaml').write_text('apiVersion: apps/v1\nkind: StatefulSet\nmetadata:\n  name: extra\n  namespace: boutique-dev\nspec:\n  template:\n    spec:\n      containers:\n      - name: extra\n        image: evil.example.com/unscanned:latest\n')
+        self.assert_rejected(self.render_gate(),'Unapproved application resource kind')
+
+    def test_duplicate_resource_identity_rejected(self):
+        (self.root/'environments/dev/templates/duplicate.yaml').write_text('apiVersion: v1\nkind: Service\nmetadata:\n  name: frontend\n  namespace: boutique-dev\n')
+        self.assert_rejected(self.render_gate(),'Duplicate application resource identity')
+
+    def test_corrupt_chart_artifact_fails_before_mutation(self):
+        path=self.root/'environments/staging/releases.yaml';before=path.read_bytes()
+        broken=Path(self.temporary.name)/'broken.tgz';broken.write_bytes(b'not an archive')
+        result=self.script('promote.py','cart','staging',IMAGE,'--evidence',self.dev_evidence,'--public-key',self.public,'--release-record',self.release_record,'--release-public-key',self.release_public,'--chart-package',broken)
+        self.assert_rejected(result,'Invalid Helm chart package')
+        self.assertEqual(path.read_bytes(),before)
+        self.assertFalse((self.root/'promotionrecords/staging/cart.json').exists())
 
 
 if __name__ == '__main__':

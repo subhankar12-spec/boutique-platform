@@ -33,7 +33,7 @@ Create inbound nodes with one executor each and provision their tools/network ro
 
 The policy executor must be distinct from the occupied deploy executor: the parent waits for policy while retaining its deployment workspace. The release and delivery parents free their build/deploy executor before waiting for downstream rollout verification. Promotion and rollback retain their common `boutique-delivery-ENV` lock through the verifier, which must not reacquire it. These choices avoid single-executor child-job deadlocks while preventing competing deliveries to the same environment.
 
-Use [agent setup](../../boutique-ci/jenkins/agents/README.md) for WebSocket connection and rootless Docker requirements. Deploy/policy agents need Python, Git, GitHub CLI, OpenSSL, kubectl and kubeconform; infrastructure agents also need Terraform. Controllers do not build images. Agent VMs, network routes and remote TLS endpoints are explicit provisioning tasks.
+Use [agent setup](../../boutique-ci/jenkins/agents/README.md) for WebSocket connection and rootless Docker requirements. Deploy/policy agents need Python, Git, GitHub CLI, OpenSSL, kubectl, Helm and kubeconform; infrastructure agents also need Terraform. Controllers do not build images. Agent VMs, network routes and remote TLS endpoints are explicit provisioning tasks.
 
 ## Repository and job wiring
 
@@ -45,7 +45,7 @@ Use [agent setup](../../boutique-ci/jenkins/agents/README.md) for WebSocket conn
 
 `boutique-gitops-check` loads its definition from protected CI and its tools from protected GitOps main. Candidate PR files are evaluated as data; its required result must not come from the candidate's Jenkinsfile. Manual GitOps PRs also need this fixed job, with their numeric `PR_NUMBER`. Configure a webhook/dispatcher or run it explicitly after the PR changes.
 
-GitOps main must require the exact `boutique/gitops-policy` status, strict up-to-date checks, administrator enforcement, CODEOWNER approval and dismissal of stale reviews. The checked-in CODEOWNERS protects policy/configuration and staging/production changes. Dev digest overlays/records are intentionally unowned so they can auto-merge after the cryptographic policy check. To support that path, set the general required review count to zero while retaining CODEOWNER review for owned paths; alternatively require a review for dev and disable automated dev merge. Restrict who can publish the required status to the trusted integration when the repository protection mechanism supports it. Auto-merge must be enabled at the repository level. A base/head change during policy execution fails and requires a fresh check.
+GitOps main must require the exact `boutique/gitops-policy` status, strict up-to-date checks, administrator enforcement, CODEOWNER approval and dismissal of stale reviews. The checked-in CODEOWNERS protects policy/configuration and staging/production changes. Dev image selections/chart versions/packages/records are intentionally unowned so they can auto-merge after the cryptographic policy check. To support that path, set the general required review count to zero while retaining CODEOWNER review for owned paths; alternatively require a review for dev and disable automated dev merge. Restrict who can publish the required status to the trusted integration when the repository protection mechanism supports it. Auto-merge must be enabled at the repository level. A base/head change during policy execution fails and requires a fresh check.
 
 ## Credential IDs
 
@@ -63,8 +63,8 @@ Enter values through Jenkins credential settings or an approved secret-managemen
 | `release-evidence-public-key` | File; independently trusted deployment verification key |
 | `kubeconfig-dev`, `kubeconfig-staging`, `kubeconfig-production` | Files; namespace rollout/pod read plus Argo Application read, without secret access or deployment writes |
 | `boutique-ca-dev`, `boutique-ca-staging`, `boutique-ca-production` | Files; trust material for the actual storefront TLS origins |
-| `terraform-nonprod-backend`, `terraform-production-backend` | Files; environment-specific backend settings |
-| `terraform-nonprod-variables`, `terraform-production-variables` | Files; environment-specific Terraform inputs |
+| `terraform-nonprod-backend`, `terraform-production-backend`, `terraform-audit-backend` | Files; environment-specific backend settings |
+| `terraform-nonprod-variables`, `terraform-production-variables`, `terraform-audit-variables` | Files; environment-specific Terraform inputs |
 | `rds-global-ca-bundle` | File; verified public RDS trust material for infrastructure/data setup |
 
 The key generator stores separate artifact/evidence pairs under ignored mode-0700 `jenkins/.delivery-secrets/`, with mode-0600 files. Upload them securely, restrict private-key use to the intended trusted jobs and back them up securely. Never trust a public key supplied by a PR, caller parameter or signed envelope. Rotate through reviewed credential replacement and re-verification; replacing a verification key rejects old signatures until a planned retention/rotation strategy is applied.
@@ -84,3 +84,5 @@ AWS Terraform agents use short-lived instance/workload roles, optionally assumin
 Follow [deployment](runbooks/deployment.md) for the first complete release and routine dev → staging → production flow. A protected-main build archives its signed release and measured scan/SBOM before calling delivery; the artifacts can be consumed while that parent still waits. A parent delivery failure does not erase the already published immutable artifact.
 
 Staging/prod promotions name a specific trusted `boutique-verify` build for the same image in the preceding environment; evidence is limited to 24 hours. Rollback selects a previously verified same-environment digest with retained evidence up to 30 days old. Both open reviewed GitOps changes and sign fresh verification after reconciliation. A merged PR alone is not deployment success. Keep production release/evidence artifacts for recovery and review database compatibility before approving a change.
+
+Application build jobs validate and publish service-owned Helm packages; version-2 signatures bind the chart and image. Argo uses environment Helm values, with a third lab values file when appropriate. See [Helm delivery](../../boutique-gitops/docs/helm-delivery.md). The infrastructure job selects nonprod, production or the once-per-account audit root; audit needs backend/variables credentials, not the RDS CA.

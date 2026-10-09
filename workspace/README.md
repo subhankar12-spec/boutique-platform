@@ -10,7 +10,7 @@ A working four-service ecommerce app with Jenkins, Kubernetes GitOps, monitoring
 | boutique-orders | Java/Spring Boot orders backed by PostgreSQL |
 | boutique-ci | Jenkins shared library, trusted pipelines, controllers and agents |
 | boutique-infrastructure | Terraform AWS infrastructure and database bootstrap |
-| boutique-gitops | Environment overlays, Argo CD, policies and monitoring |
+| boutique-gitops | Helm environment charts, Argo CD, policies and monitoring |
 | boutique-platform | Local runtime, production lab, integration checks and runbooks |
 
 ## Start with the application
@@ -26,7 +26,7 @@ Only the frontend is exposed, on local port 8080. Generated secrets in ignored `
 
 ## Delivery and deployment
 
-Service PRs run tests, builds and security scans on an isolated validation controller. Protected-main builds publish a tested image, SBOM, scan report and signed release attestation. Jenkins opens GitOps PRs to promote the same immutable digest through dev, staging and production. A fixed trusted policy job checks the candidate manifests and signatures. Argo CD reconciles merged changes; a read-only verifier measures rollout, runtime image IDs and HTTP behavior, then signs deployment evidence. Staging and production require matching evidence from the preceding environment. Production has an explicit approval; rollback uses previous verified evidence and a current-image guard.
+Service PRs run tests, builds and security scans on an isolated validation controller. Protected-main builds publish a tested image, versioned Helm chart, SBOM, scan report and signed release attestation. Jenkins opens GitOps PRs to promote the same signed chart package and immutable image digest through dev, staging and production. A fixed trusted policy job checks the candidate manifests and signatures. Argo CD reconciles merged changes; a read-only verifier measures rollout, runtime image IDs and HTTP behavior, then signs deployment evidence. Staging and production require matching evidence from the preceding environment. Production has an explicit approval; rollback uses previous verified evidence and a current-image guard.
 
 An initial bootstrap job publishes all four service selections together, avoiding incomplete first deployments. Separate controllers isolate PR code from release credentials. Environment locks serialize promotion and rollback through verification. These are implemented controls; the full GitHub-to-cluster path still needs execution on a supported host.
 
@@ -44,3 +44,5 @@ The app's functional smoke checks, real database/client TLS tests, queue integra
 This cloud runner cannot validate the full two-cluster deployment: it has insufficient Docker disk space and restricted cgroups. GitHub repository creation was denied by the installed integration (HTTP 403); publication remains blocked. Local commits and recoverable source/Git archives preserve the work. Saving cloud environment configuration does not publish GitHub repositories or activate the environment draft.
 
 Start with [production lab setup](boutique-platform/docs/production-lab.md), [Jenkins setup](boutique-platform/docs/jenkins-setup.md), [delivery evidence](boutique-gitops/docs/release-evidence.md), and the [AWS infrastructure guide](boutique-infrastructure/README.md).
+
+Application charts and AWS telemetry: see `boutique-gitops/docs/helm-delivery.md` and `boutique-infrastructure/docs/aws-observability.md`.

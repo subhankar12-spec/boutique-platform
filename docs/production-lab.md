@@ -1,13 +1,13 @@
 # Production delivery lab
 
-Keep one repository per service. This lab uses the same reviewed releases, immutable image digests, promotion overlays and verification gates as the AWS reference. Two independent Kubernetes clusters separate dev/staging from production; it does not create AWS resources or replace the existing Docker Compose installation.
+Keep one repository per service. This lab uses the same reviewed releases, immutable image digests, Helm chart/image selections and verification gates as the AWS reference. Two independent Kubernetes clusters separate dev/staging from production; it does not create AWS resources or replace the existing Docker Compose installation.
 
 | Boundary | Configuration |
 |---|---|
 | Nonproduction cluster | `kind-boutique-nonprod`: dev and staging namespaces, two workers |
 | Production cluster | `kind-boutique-production`: production namespace, two workers |
 | Network enforcement | Checksum-pinned Calico, default-deny application policies, executable allow/deny drill |
-| Delivery | Digest-only releases, Argo CD per cluster, restricted AppProjects, existing promotion overlays |
+| Delivery | Digest-only releases, Argo CD per cluster, restricted AppProjects, existing Helm chart/image selections |
 | Ingress and data | Traefik TLS, cert-manager certificates, CA/hostname verification for PostgreSQL and Redis |
 | Verification identity | Namespace read-only service account plus Argo Application read access; no Secret read or deployment permission |
 | Monitoring exercises | Prometheus/Grafana/Loki/Alloy; internal Slack/ServiceNow mock receivers; dedicated TLS PostgreSQL incident queue in production |
@@ -51,7 +51,7 @@ The frontend origins are `https://dev.boutique.test:8443`, `https://staging.bout
 
 ## Prepare publication, credentials and releases
 
-Argo CD reads the real published GitOps repository. Local files alone cannot satisfy delivery. Publish the repositories and bootstrap trusted Jenkins first. Release the four services and the incident adapter through their build/test/scan gates. For the first installation, run the four application `boutique-{service}/main` jobs with `DELIVER_TO_DEV=false` and retain their successful release build numbers. This publishes the quality-checked, signed images without trying to verify an incomplete application. Use the aggregate bootstrap below to select the initial four-service baseline. Subsequent main builds keep automatic dev delivery enabled. `lab-profiles/{environment}` imports those overlays and adds local data/TLS configuration; it does not replace the release digest or rebuild an environment-specific image.
+Argo CD reads the real published GitOps repository. Local files alone cannot satisfy delivery. Publish the repositories and bootstrap trusted Jenkins first. Release the four services and the incident adapter through their build/test/scan gates. For the first installation, run the four application `boutique-{service}/main` jobs with `DELIVER_TO_DEV=false` and retain their successful release build numbers. This publishes the quality-checked, signed images without trying to verify an incomplete application. Use the aggregate bootstrap below to select the initial four-service baseline. Subsequent main builds keep automatic dev delivery enabled. `lab-profiles/{environment}/values.yaml` supplements the environment Helm chart with local data/TLS configuration; it does not replace the release digest or rebuild an environment-specific image.
 
 Use private files (`chmod 600`) for a read-only GitOps repository token and a GHCR `read:packages` token. Prefer short-lived GitHub App credentials and rotate them separately from the build/publish identity. Do not put tokens in command arguments, source files or chat.
 
@@ -79,7 +79,7 @@ python3 scripts/production-lab.py readiness --cluster nonprod --environment dev
 python3 scripts/production-lab.py verify --environment dev
 ```
 
-Continue the Jenkins pause once Argo synchronization has started. The bootstrap job runs `boutique-verify` for each selected service and produces four signed dev verification records. Do not activate staging while its overlays still contain bootstrap tags.
+Continue the Jenkins pause once Argo synchronization has started. The bootstrap job runs `boutique-verify` for each selected service and produces four signed dev verification records. Do not activate staging while its release values still contain bootstrap tags.
 
 For the first staging release, run `boutique-bootstrap` with `TARGET=staging`, the same four release build numbers, and the corresponding dev verification builds in the four `*_EVIDENCE_BUILD` parameters. After its reviewed aggregate merge, use the initial-sync pause to activate staging:
 

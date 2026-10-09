@@ -37,4 +37,11 @@ Source-only secret scans and image gates cover the tested repository/runtime con
 
 Reusable onboarding configuration is saved as an environment draft. Review/save and publish it in environment settings to activate it; that action still needs a fresh-task check before claiming cloud environment restoration.
 
-Machine-readable summaries are retained in [summary.json](validation-artifacts/summary.json) and the [actual Jenkins runtime report](validation-artifacts/jenkins-runtime.json). The complete agent image remains unbuilt and unscanned here: its signed Debian snapshot endpoint returned HTTP 403. Eight checksum-locked tool distributions were independently installed and executed.
+Machine-readable summaries are retained in [summary.json](validation-artifacts/summary.json) and the [actual Jenkins runtime report](validation-artifacts/jenkins-runtime.json). The complete agent image remains unbuilt and unscanned here: its signed Debian snapshot endpoint returned HTTP 403. Nine checksum-locked tool distributions were independently installed and executed.
+
+
+## Helm and AWS audit enhancement
+
+The application migration renders all nine cloud/lab/local environment profiles to the same Kubernetes objects as their previous manifests. Helm lint, strict Kubernetes schemas and image-selection policy pass. Delivery tests use real packaged charts, Git histories and Ed25519 signatures, including package tampering and chart changes with unchanged images. The running Jenkins controller validated the revised shared service pipeline, five delivery jobs and infrastructure job; JCasC/seed jobs and isolated downstream lock tests passed. This is pipeline/configuration validation, not actual registry publication or cluster delivery.
+
+All AWS platform roots validate with the locked provider. The new once-per-account audit root passes four native Terraform mock tests: secure management-event collection/storage/policies, explicit data-event opt-in, recursive log-bucket rejection and short-retention rejection. These are offline simulated plans, not real AWS plans or applies. CloudWatch delivery, the optional reviewed-version addon, CloudTrail events, SNS subscription confirmation and audit validation still require AWS acceptance. See the [AWS runbook](../../boutique-infrastructure/docs/aws-observability.md).

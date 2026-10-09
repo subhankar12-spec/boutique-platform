@@ -18,5 +18,9 @@ curl -fsSL https://releases.hashicorp.com/terraform/1.11.4/terraform_1.11.4_SHA2
 curl -fsSL https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz -o "$TMP/kubeconform.tar.gz"
 curl -fsSL https://github.com/yannh/kubeconform/releases/download/v0.6.7/CHECKSUMS -o "$TMP/KUBECONFORM_SUMS"
 (cd "$TMP" && awk '$2 == "kubeconform-linux-amd64.tar.gz" {print $1 "  kubeconform.tar.gz"}' KUBECONFORM_SUMS | sha256sum -c - && tar -xzf kubeconform.tar.gz kubeconform)
+curl -fsSL https://get.helm.sh/helm-v3.22.0-linux-amd64.tar.gz -o "$TMP/helm.tar.gz"
+printf '%s  %s\n' '1e4ab49e429626cf6c6958d914248b78c9730803c2751b87627e171dc800e7bb' "$TMP/helm.tar.gz" | sha256sum -c -
+tar -xzf "$TMP/helm.tar.gz" -C "$TMP" linux-amd64/helm
+install -m 0755 "$TMP/linux-amd64/helm" "$DESTINATION/helm"
 install -m 0755 "$TMP/kubectl" "$TMP/kind" "$TMP/terraform" "$TMP/kubeconform" "$DESTINATION/"
 echo "Add $DESTINATION to PATH. Requires Linux amd64, curl, unzip and sha256sum."

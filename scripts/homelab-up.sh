@@ -12,6 +12,6 @@ for service in frontend catalogue cart orders; do
   kind load docker-image "boutique-$service:local" --name boutique
 done
 python3 scripts/k8s-secrets.py "$ENVIRONMENT"
-kubectl apply -k "../boutique-gitops/homelab/$ENVIRONMENT"
+python3 ../boutique-gitops/scripts/render.py "$ENVIRONMENT" --profile local | kubectl --context kind-boutique apply -f -
 for service in frontend catalogue cart orders; do kubectl -n "boutique-$ENVIRONMENT" rollout status "deployment/$service" --timeout=240s; done
 echo "Use kubectl -n boutique-$ENVIRONMENT port-forward service/frontend 8080:8080; then run python3 tests/smoke/smoke.py"

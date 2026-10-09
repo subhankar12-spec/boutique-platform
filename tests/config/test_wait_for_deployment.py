@@ -1,5 +1,6 @@
 """Deployment wait gates against real Git history and native status fixtures."""
 import copy
+import yaml
 import importlib.util
 import json
 import os
@@ -33,12 +34,11 @@ class DeploymentWaitTests(unittest.TestCase):
         self.addCleanup(self.temporary.cleanup)
         self.folder = Path(self.temporary.name)
         self.root = self.folder/'gitops'
-        (self.root/'scripts').mkdir(parents=True)
-        shutil.copyfile(SOURCE/'scripts/evidence.py', self.root/'scripts/evidence.py')
-        for service in waiter.SERVICES:
-            overlay = self.root/f'services/{service}/overlays/dev/kustomization.yaml'
-            overlay.parent.mkdir(parents=True)
-            overlay.write_text('apiVersion: kustomize.config.k8s.io/v1beta1\nkind: Kustomization\nimages:\n- name: ghcr.io/subhankar12-spec/boutique-'+service+'\n  digest: sha256:'+'a'*64+'\n')
+        shutil.copytree(SOURCE/'scripts',self.root/'scripts',ignore=shutil.ignore_patterns('__pycache__'))
+        shutil.copytree(SOURCE/'environments',self.root/'environments')
+        values=self.root/'environments/dev/releases.yaml';data=yaml.safe_load(values.read_text())
+        for service in waiter.SERVICES:data[service]['image']={'repository':'ghcr.io/subhankar12-spec/boutique-'+service,'digest':'sha256:'+'a'*64,'tag':''}
+        values.write_text(yaml.safe_dump(data,sort_keys=False))
         self.git('init','-b','main')
         self.git('config','user.name','Deployment verifier test')
         self.git('config','user.email','verifier-test@example.com')
@@ -58,7 +58,7 @@ class DeploymentWaitTests(unittest.TestCase):
 
     def descendant(self,changed_image=False,protected=True):
         if changed_image:
-            file = self.root/'services/cart/overlays/dev/kustomization.yaml'
+            file = self.root/'environments/dev/releases.yaml'
             file.write_text(file.read_text().replace('a'*64,'b'*64))
         else:
             (self.root/'README.md').write_text('Unrelated reviewed change '+str(len(self.git('log','--oneline').splitlines())))
@@ -70,12 +70,23 @@ class DeploymentWaitTests(unittest.TestCase):
         return waiter.TrustedHistory(self.root,'dev','cart',IMAGE,requested or self.requested)
 
     def application(self,revision=None,path='environments/dev'):
-        source={'repoURL':waiter.REPOSITORY,'targetRevision':'main','path':path}
+        source={'repoURL':waiter.REPOSITORY,'targetRevision':'main','path':path,'helm':{'releaseName':'boutique-dev','valueFiles':['values.yaml','releases.yaml']}}
+        if path=='lab-profiles/dev':
+            source['path']='environments/dev';source['helm']['valueFiles'].append('../../lab-profiles/dev/values.yaml')
         return {'apiVersion':'argoproj.io/v1alpha1','kind':'Application',
                 'metadata':{'name':'boutique-dev','namespace':'argocd'},
                 'spec':{'source':source,'destination':{'server':'https://kubernetes.default.svc','namespace':'boutique-dev'}},
                 'status':{'sync':{'revision':revision or self.requested,'status':'Synced','comparedTo':{'source':copy.deepcopy(source)}},
                           'health':{'status':'Healthy'},'operationState':{'phase':'Succeeded'}}}
+
+    def test_descendant_with_same_image_and_changed_chart_rejected(self):
+        history=self.history()
+        target=next((self.root/'environments/dev/charts').glob('boutique-cart-*.tgz'))
+        data=bytearray(target.read_bytes());data[4]=(data[4]+1)%256;target.write_bytes(data)
+        revision=self.commit();self.git('update-ref','refs/remotes/origin/main',revision)
+        history=self.history()
+        with self.assertRaisesRegex(waiter.DeploymentError,'chart'):
+            history.validate_revision(revision)
 
     def deployments(self):
         items=[]

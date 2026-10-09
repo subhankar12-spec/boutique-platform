@@ -18,7 +18,7 @@ Each row is an independent Git repository, even when checked out beside the othe
 | `boutique-orders` | Spring Boot orders, PostgreSQL and Flyway migrations |
 | `boutique-ci` | Shared Jenkins library, controller configuration, seeds and delivery jobs |
 | `boutique-infrastructure` | AWS Terraform, state bootstrap and managed-data initialization |
-| `boutique-gitops` | Argo CD Applications, environment overlays, release policy and monitoring manifests |
+| `boutique-gitops` | Argo CD Applications, Helm environment charts, release policy and monitoring manifests |
 | `boutique-platform` | Local runtime, two-cluster lab automation, smoke tests, incident adapter and runbooks |
 
 ## Delivery path
@@ -38,7 +38,7 @@ flowchart LR
 
 The service repository uses one shared pipeline definition. On the validation controller it tests and scans without publishing. On the release controller only protected `main` builds publish the tested image and sign its release record, including scan/SBOM hashes. Subsequent promotions select that immutable digest; they do not rebuild an environment-specific image.
 
-A fixed GitOps policy job loads protected tools and treats PR files as data. Staging requires recent signed verification of the same digest in dev; production requires staging evidence and a named approver. The verifier binds native Deployment/Pod measurements, Argo's actual synchronized revision and real HTTPS smoke results. Promotion and rollback share an environment lock through verification. See [Jenkins setup](jenkins-setup.md) and [release evidence](../../boutique-gitops/docs/release-evidence.md) for the trust assumptions.
+A fixed GitOps policy job loads protected tools and treats PR files as data. Staging requires recent signed verification of the same signed Helm package and image digest in dev; production requires staging evidence and a named approver. The verifier binds native Deployment/Pod measurements, Argo's actual synchronized revision and real HTTPS smoke results. Promotion and rollback share an environment lock through verification. See [Jenkins setup](jenkins-setup.md) and [release evidence](../../boutique-gitops/docs/release-evidence.md) for the trust assumptions.
 
 ## Environment separation
 

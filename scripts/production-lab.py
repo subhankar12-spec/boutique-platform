@@ -129,7 +129,7 @@ def pinned_manifest(name):
 
 def doctor_report():
     blockers, warnings, details = [], [], {}
-    for command in ('docker', 'kubectl', 'openssl'):
+    for command in ('docker', 'kubectl', 'openssl', 'helm'):
         if not shutil.which(command):
             blockers.append(f'{command} is missing; install the documented tools')
     if not shutil.which(kind_command()) and not Path(kind_command()).is_file():
@@ -388,7 +388,7 @@ def validate_release_images(rendered, *, monitoring=False):
 def argo_application(cluster, env, *, monitoring=False):
     name = f'boutique-{env}' if not monitoring else f'lab-monitoring-{cluster}'
     destination = 'boutique-' + env if not monitoring else 'monitoring'
-    path = f'lab-profiles/{env}' if not monitoring else f'lab-profiles/monitoring/{cluster}'
+    path = f'environments/{env}' if not monitoring else f'lab-profiles/monitoring/{cluster}'
     namespaces = [destination] if not monitoring else ['monitoring', 'monitoring-logs']
     # AppProject cannot modify arbitrary cluster resources. Only the monitoring
     # collector's reviewed cluster RBAC is permitted for monitoring applications.
@@ -404,6 +404,8 @@ def argo_application(cluster, env, *, monitoring=False):
                     'destination': {'server': 'https://kubernetes.default.svc', 'namespace': destination},
                     'syncPolicy': {'automated': {'prune': True, 'selfHeal': True}, 'syncOptions': ['CreateNamespace=true'],
                                    'retry': {'limit': 3, 'backoff': {'duration': '5s', 'factor': 2, 'maxDuration': '1m'}}}}}
+    if not monitoring:
+        app["spec"]["source"]["helm"]={"releaseName":"boutique-"+env,"valueFiles":["values.yaml","releases.yaml",f"../../lab-profiles/{env}/values.yaml"]}
     return project, app
 
 
@@ -424,7 +426,7 @@ def deploy(cluster, monitoring=False, environment=None):
     environments = ['production' if cluster == 'production' else 'dev'] if monitoring else selected
     for env in environments:
         folder = GITOPS / ('lab-profiles/monitoring/' + cluster if monitoring else 'lab-profiles/' + env)
-        rendered = run(['kubectl', 'kustomize', folder])
+        rendered = run(['kubectl', 'kustomize', folder]) if monitoring else run(['python3',GITOPS/'scripts/render.py',env,'--profile','lab'])
         validate_release_images(rendered, monitoring=monitoring)
     for env in environments:
         project, app = argo_application(cluster, env, monitoring=monitoring)
