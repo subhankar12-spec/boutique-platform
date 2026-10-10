@@ -1,29 +1,25 @@
-# Cloud runner validation notes
+# Cloud runner and target-host validation
 
-The runner supports Docker Compose but uses the VFS storage driver and exposes read-only cgroups to this process. Nested kind previously failed kubelet/control-plane health. The production-lab doctor now stops cluster creation when its host prerequisites are unmet; it does not pull node images or alter the existing application. Full two-cluster Kubernetes delivery must be exercised on the documented laptop Docker host or Linux VM.
+Use this workspace for source review, component tests, native Helm/schema checks
+and isolated Jenkins configuration validation. The actual Debian laptop is a
+separate machine; commands here do not operate its Jenkins agent or kind cluster.
 
-Allow at least 30 GiB free Docker storage on a supported overlay2 host, or 60 GiB with VFS, plus 16 GiB RAM (24–32 recommended). Separate production-learning clusters do not require paid AWS resources. The AWS Terraform remains a configurable reference and was not applied.
+See [validation.md](validation.md) for current results and live acceptance work.
+The isolated controller harness has no GitHub/cloud credentials and does not
+publish images, deploy applications or send notifications.
 
-## Build adaptations used here
+The optional two-cluster helper checks host prerequisites before cluster creation.
+Run it only on a supported host with adequate Docker storage and at least 16 GiB
+RAM (24–32 recommended), writable cgroups and working nested Kubernetes. Earlier
+cloud attempts lacked those capabilities; do not treat old failures or a running
+Docker daemon as proof that this instance can run a full cluster.
 
-Build-container networking could not resolve all Maven/pip dependencies through the available route. Equivalent test/build stages used official checksum-verified tools and local dependency caches:
+Your existing 8 GiB Debian host follows [deploy-cicd-kind.md](deploy-cicd-kind.md):
+one existing mega-local cluster, one Jenkins controller, the connected rootless
+build agent and dev first. Do not run the larger-host bootstrap unchanged there.
 
-- Maven and a JDK from its official image, with Maven's supported proxy configuration and the machine's trusted Java CA store.
-- Hash-locked Python dependencies installed from a verified local wheelhouse.
-- Official Go tooling and pinned runtime images, with the same application tests and build outputs.
-
-TLS verification remained enabled. The adaptations do not embed runner credentials or proxy configuration in application sources/images. Docker build caches created by this work were cleaned when VFS copies exhausted available storage.
-
-The application and monitoring checks used real Compose networking, PostgreSQL and Redis. Grafana was exercised separately, then its container/image was removed to preserve disk; its data volume and credentials were retained. The ServiceNow and Slack tests target local mocks only.
-
-## Jenkins and truststore checks
-
-Official Jenkins archive access allowed a complete checksum-locked plugin installation and a real Jenkins 2.580.1 runtime. Plugin-backed Declarative validation, Job DSL generation, JCasC and isolated child-job/lock behavior were exercised. Earlier update-center redirect failures no longer describe the validated archive installation path. No real source indexing, GHCR publication or Jenkins-to-cluster deployment was performed by that isolated runtime test.
-
-The official AWS RDS CA bundle was fetched and validated, then committed as public trust material in the orders repository with its checksum. PostgreSQL and Redis client TLS tests verify both successful connections and rejection of invalid trust/hostnames. No TLS bypass was added.
-
-## External configuration
-
-Reusable startup instructions, repository revisions and required network domains are saved in the environment draft. Saving a draft does not apply or publish its settings or prove restoration in a new task. Review/save and publish through environment settings to activate them.
-
-The owner created the eight empty repositories and granted the platform integration access. `scripts/publish-repositories.py` then pushed every `main` branch and verified the remote commit against the local branch, using existing platform authentication. Repository creation from this runner remains denied (`403 Resource not accessible by integration`); neither browser login nor the dedicated publication-token binding resolved that restriction. The dedicated token is not needed for the verified push workflow and can be removed/revoked through settings. Keep tokens and secret values out of source, logs and chat. Source publication does not establish live Jenkins delivery, registry publication or cluster deployment.
+The eight repositories are published under subhankar12-spec. Use normal reviewed
+Git commits/pushes, preserving local changes. Source publication is separate from
+cloud environment configuration; saving an environment draft does not push code,
+apply infrastructure or prove application functionality. Supply credentials only
+through secure settings, never source files or chat.

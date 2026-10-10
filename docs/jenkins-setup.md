@@ -46,10 +46,16 @@ script path `pipelines/seed-release.Jenkinsfile`. Keep
 main builds. It runs `jenkins/jobs/release.groovy`. Review Job DSL configuration
 API approvals if Jenkins requests them; do not globally disable sandboxing.
 
-The seed generates four app multibranch jobs, optional platform adapter build,
-promote/rollback/verify and infrastructure. Only main is discovered. Existing
+The seed generates four app multibranch jobs plus promote/rollback/verify,
+manifest validation and infrastructure. `ENABLE_INCIDENT_BRIDGE_BUILD=false`
+(default) omits the adapter job; explicitly enable it for ServiceNow. Only main is discovered. Existing
 jobs not present in the definition are preserved: disable obsolete bootstrap,
 policy and validation jobs manually after checking active runs.
+
+The ServiceNow adapter build is opt-in in the seed with
+`ENABLE_INCIDENT_BRIDGE_BUILD=true`. If an earlier seed already created
+`boutique-platform`, disable that Jenkins job when the integration is unused;
+removedJobAction=IGNORE deliberately preserves existing jobs.
 
 ## Credentials
 
@@ -65,7 +71,7 @@ policy and validation jobs manually after checking active runs.
 A distinct bot creates GitOps PRs so a human reviewer can approve. Current
 username/password bindings support PATs. Adopt a GitHub App only with compatible
 short-lived credential handling; do not put an installation ID in a PAT field.
-No release-artifact/evidence keys  are consumed anymore.
+No release-artifact/evidence keys are consumed anymore.
 Remove those credentials after migrating pins/jobs and stopping obsolete builds.
 
 For automated verification, configure `BOUTIQUE_DEV_ORIGIN`,

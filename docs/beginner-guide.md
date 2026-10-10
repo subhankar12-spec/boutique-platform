@@ -355,7 +355,6 @@ boutique-platform/
   scripts/
     init-local.sh          Preserve/generate local app credentials
     local-up.sh            Build/start Compose and run smoke checks
-    homelab-up.sh          Older fixed-name single-kind convenience helper
     k8s-secrets.py         Generate/preserve introductory Kubernetes Secrets
     production-lab.py     Full lab foundation, secrets, delivery and drills
     wait-for-deployment.py Trusted verification helper
@@ -373,9 +372,8 @@ The incident adapter is the fifth custom deployable workload. Redis,
 PostgreSQL, Grafana and Argo are additional software components, but they are not
 custom business services with their own application repositories.
 
-The old homelab-up.sh assumes a cluster named boutique and changes the active
-kubectl context. This guide uses explicit cluster selection and an isolated
-operator kubeconfig for the introductory path instead.
+The current deployment guide explicitly selects your existing cluster. The
+optional manual exercise uses an isolated operator kubeconfig.
 
 ## 5. Understand the recurring file types
 
@@ -574,9 +572,8 @@ Keep credentials out of shell startup files.
 You can open workspace/boutique.code-workspace from the platform repository in
 VS Code after verifying its relative folders resolve in your chosen layout.
 
-Do not run init-repositories.sh or publish-repositories.py just to clone the
-published project. Those scripts initialize/publish repositories; Git clone is
-the normal consumer workflow.
+Use normal Git clone/pull commands for the eight published repositories.
+Repository creation/publication helpers have been retired.
 
 ### Checkpoint B
 

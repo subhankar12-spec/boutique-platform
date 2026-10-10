@@ -4,10 +4,10 @@
   "passed": true,
   "declarativeFiles": [
     "service-reference.Jenkinsfile",
-    "bootstrap.Jenkinsfile",
-    "gitops-check.Jenkinsfile",
+    "gitops-validate.Jenkinsfile",
     "promote.Jenkinsfile",
     "rollback.Jenkinsfile",
+    "seed-release.Jenkinsfile",
     "verify.Jenkinsfile",
     "Jenkinsfile"
   ],
@@ -24,5 +24,10 @@
       "number": 2,
       "result": "FAILURE"
     }
-  ]
+  ],
+  "jobDslGeneratedJobs": {
+    "default": 9,
+    "withIncidentBridge": 10
+  },
+  "jcascWarnings": 0
 }

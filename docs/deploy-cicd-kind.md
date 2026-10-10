@@ -145,8 +145,10 @@ Disable an old Freestyle seed. Create **New Item → Pipeline**, named
 
 Save and run it. `SUPPRESS_AUTOMATIC_BUILDS=true` is the default: indexing can
 create branches without triggering application builds. Manual builds work.
-The seed creates four service jobs, a platform adapter build, promote, rollback,
-verify and infrastructure jobs. The adapter and infrastructure jobs are optional.
+The seed creates four service jobs plus promote, rollback, manifest validation,
+verify and infrastructure jobs. Keep `ENABLE_INCIDENT_BRIDGE_BUILD=false`
+(default); enabling it adds the optional platform adapter build. Infrastructure
+is manual and optional.
 
 The Job DSL uses Jenkins configuration APIs. If Jenkins requests script approval,
 review the exact checked-in seed/DSL and only the necessary signatures under
@@ -154,6 +156,11 @@ In-process Script Approval. Do not disable the sandbox globally. The seed
 preserves jobs it no longer manages. Disable old `boutique-bootstrap` and
 `boutique-gitops-check` jobs manually after reviewing active builds; they are
 not deleted automatically, and old job configurations are not safe to run.
+
+The ServiceNow adapter build is opt-in in the seed with
+`ENABLE_INCIDENT_BRIDGE_BUILD=true`. If an earlier seed already created
+`boutique-platform`, disable that Jenkins job when the integration is unused;
+removedJobAction=IGNORE deliberately preserves existing jobs.
 
 ## 6. Build and publish the four services
 

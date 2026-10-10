@@ -149,15 +149,15 @@ The restore drill produces a private logical backup, restores into a uniquely na
 
 The TLS test uses existing tested container images, isolated Docker networking and disposable data. It validates CA/hostname acceptance and rejection for both clients plus PostgreSQL/Redis TLS key permissions. It does not pull images, touch existing Compose containers/volumes or send external notifications.
 
-Also execute the reviewed GitOps rollback workflow after a deliberately failed candidate, check that promotion is blocked without matching verification evidence, restore Jenkins from its configuration/backup runbook, and restart incident adapter replicas while notifications are pending. Capture evidence and recovery times instead of declaring the platform complete because configuration files exist.
+Also execute the reviewed GitOps rollback workflow after a deliberately failed candidate, confirm reviewers require the preceding environment’s successful rollout/smoke reports before promotion, restore Jenkins from its configuration/backup runbook, and restart incident adapter replicas while notifications are pending. Capture evidence and recovery times instead of declaring the platform complete because configuration files exist.
 
-## Validation on the current cloud runner
+## Validation boundary
 
-The new dev/staging/production profiles render. All four controller source checksums and all controller image digest locks validate. The kind 0.33.0 CLI passes its published SHA256 check. Script regression checks pass. Disposable Docker tests prove PostgreSQL `verify-full` and Redis TLS CA/hostname rejection, validate certificate file permissions, and prove server-side rejection of plaintext PostgreSQL connections.
-
-The runner's Docker storage uses VFS, has less than the required 30 GiB free, and exposes read-only cgroups to this process. Earlier nested kind failed kubelet/control-plane health. The doctor therefore blocks cluster creation before pulling node images. Kubernetes controller installation, Argo reconciliation, live network-policy enforcement, Kubernetes restore and real Jenkins-to-cluster execution remain unverified here; run them on the documented supported host. Existing Docker Compose application/data were preserved.
-
-Monitoring also uses Helm: `monitoring/` is the shared chart, `monitoring/profiles/<cluster>/values.yaml` selects discovery and queue behavior, and `lab-profiles/monitoring/<cluster>/values.yaml` enables internal fixtures and the local production TLS queue. The deployment helper and Argo Application select these same value files. Select the adapter digest in the cloud profile values; it applies to the lab too.
+The helper's safety tests and rendered configurations are covered in
+[validation.md](validation.md). Component results do not establish installed
+controllers, Argo reconciliation, enforced networking or measured recovery.
+The doctor checks the actual host before creating clusters; execute the optional
+exercise on a supported larger host and retain live rollout/smoke results.
 
 ## Recovery acceptance
 

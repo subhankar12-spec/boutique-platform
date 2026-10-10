@@ -1,38 +1,64 @@
 {
-  "validation_date": "2026-10-09",
-  "scope": "Current cloud workspace; no live GitHub delivery, Kubernetes installation or AWS provisioning",
-  "passed": {
-    "configuration_and_delivery_tests": 76,
-    "lab_safety_tests": 12,
-    "postgres_queue_integration_tests": 5,
-    "jenkins_locked_plugins": 74,
-    "jenkins_declarative_definitions": 7,
-    "jenkins_release_seed_jobs": 11,
-    "jenkins_validation_seed_jobs": 6,
-    "jenkins_tool_integrity_tests": 10,
-    "pinned_agent_tools_executed": 9,
-    "source_high_critical_secret_findings": 0,
-    "application_smoke_checks": 12,
-    "postgres_and_redis_tls_acceptance_and_rejection": true,
-    "monitoring_rule_and_receiver_routing_checks": true,
-    "helm_profiles_preserving_previous_resources": 9,
-    "terraform_audit_mock_tests": 4,
-    "helm_release_json_schemas": true,
-    "additional_helm_collections_preserving_previous_resources": 11,
-    "active_legacy_renderer_configurations": 0,
-    "github_repositories_pushed_and_verified": 8
+  "configuration_tests": {
+    "run": 44,
+    "passed": 44
   },
-  "unverified": [
-    "Full Jenkins-to-GitHub-to-Kubernetes delivery",
-    "Two-cluster Kubernetes runtime and network policy drills",
-    "Complete Jenkins agent image build and scan (Debian snapshot access denied)",
-    "AWS plan/apply and cloud recovery",
-    "Live Slack notifications and ServiceNow scripted resource",
-    "Live CloudWatch and CloudTrail delivery and SNS subscriptions",
-    "Optional reviewed-version CloudWatch Observability addon"
-  ],
-  "blocked": [
-    "Creating additional GitHub repositories from this runner: HTTP 403 Resource not accessible by integration (owner created the eight project repositories)",
-    "Nested Kubernetes: insufficient Docker storage and restricted cgroups"
-  ]
+  "optional_lab_safety_tests": {
+    "run": 13,
+    "passed": 13
+  },
+  "jenkins": {
+    "jenkinsVersion": "2.580.1",
+    "plugins": 74,
+    "passed": true,
+    "declarativeFiles": [
+      "service-reference.Jenkinsfile",
+      "gitops-validate.Jenkinsfile",
+      "promote.Jenkinsfile",
+      "rollback.Jenkinsfile",
+      "seed-release.Jenkinsfile",
+      "verify.Jenkinsfile",
+      "Jenkinsfile"
+    ],
+    "runtimeBuilds": [
+      {
+        "_class": "org.jenkinsci.plugins.workflow.job.WorkflowRun",
+        "building": false,
+        "number": 1,
+        "result": "SUCCESS"
+      },
+      {
+        "_class": "org.jenkinsci.plugins.workflow.job.WorkflowRun",
+        "building": false,
+        "number": 2,
+        "result": "FAILURE"
+      }
+    ],
+    "jobDslGeneratedJobs": {
+      "default": 9,
+      "withIncidentBridge": 10
+    },
+    "jcascWarnings": 0
+  },
+  "job_dsl_generated_jobs": {
+    "default": 9,
+    "with_incident_bridge": 10
+  },
+  "candidate_scripts_executed": false,
+  "native_helm_schema_checks": {
+    "profiles": 14,
+    "resources": 339,
+    "valid": 327,
+    "invalid": 0,
+    "errors": 0,
+    "explicit_custom_resource_skips": 12
+  },
+  "alertmanager_native_config_check": "passed",
+  "full_live_delivery_executed": false,
+  "notifications_sent": false,
+  "aws_applied": false,
+  "runtime_tool_integrity_tests": {
+    "run": 7,
+    "passed": 7
+  }
 }

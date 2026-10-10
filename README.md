@@ -34,3 +34,6 @@ python3 scripts/test_production_lab.py -v
 See [validation.md](docs/validation.md) for executed checks and live acceptance
 work. [SLOs](docs/slo.md), [RTO/RPO](docs/recovery-targets.md) and
 [DR](docs/runbooks/disaster-recovery.md) remain part of the operating model.
+
+See the [current CI/platform file map](docs/repository-map.md) for core files, optional
+exercises and the removed legacy components.
