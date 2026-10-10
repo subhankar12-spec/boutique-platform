@@ -1,5 +1,40 @@
 # Validation evidence
 
+## Simplified delivery validation
+
+- 44 configuration tests passed: immutable image/chart promotion, rejected
+  mutations/unmerged rollback, actual Argo history/health checks, laptop profile
+  and default/optional monitoring behavior.
+- 13 optional production-lab safety tests passed.
+- Strict Helm/schema validation passed for cloud/lab application environments,
+  the existing-kind laptop dev profile, monitoring and auxiliary charts.
+  Custom-resource skips remain explicit in the validator.
+- A fresh isolated Jenkins 2.580.1 loaded all 74 verified pinned plugins; JCasC
+  had zero warnings; actual Job DSL generated ten release jobs, with main-only service discovery with
+  bootstrap automatic-build suppression. Jenkins accepted the shared service
+  pipeline, seed, promote, rollback, manifest-validation, verify and infrastructure
+  Declarative files.
+- Isolated Jenkins execution demonstrated successful downstream propagation and
+  an intentional downstream failure producing parent FAILURE.
+- The new Slack-only Alertmanager configuration passed native amtool validation.
+- 92 documentation shell examples passed Bash syntax checks; local file links
+  and current deployment-guide anchors were checked.
+- Protected manifest validation also passed against a candidate tree whose
+  scripts were deliberately replaced with failing code: candidate scripts were
+  not executed. Packaged Helm inputs are inspected before rendering.
+
+These are configuration/component checks. The simplified full Jenkins → GHCR →
+GitOps PR → Argo → live smoke flow has not been executed on the Debian laptop
+from this cloud workspace. Live GitHub protection/status reporting, registry rights,
+notifications, AWS and measured recovery remain target-host acceptance work.
+The laptop agent was reported connected by the user before these code changes.
+
+## Historical checks before simplification
+
+The following records include tests of signing/evidence machinery now removed;
+they document prior work and are not requirements for the current workflow.
+
+
 The checks below were exercised in this cloud workspace. They establish the stated behavior at the tested boundary; they do not establish a deployed production system or restoration in a fresh environment.
 
 | Area | Exercised evidence |

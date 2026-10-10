@@ -70,6 +70,6 @@ For availability and checkout, the permitted bad-event fraction is 0.001; latenc
 
 Use a weekly review while learning. Record the window, complete/partial coverage, eligible/good/bad counts, ratio, budget consumption, related incidents and owner. Low traffic and missing probes limit the conclusions; do not extrapolate a deployment smoke pass into a monthly SLO result.
 
-If a complete window exhausts a budget, pause discretionary production changes, prioritize reliability fixes and recovery work, and document the owner's decision before resuming. Incident remediation and security fixes remain possible after review. This is an operator policy, not a new automatic Jenkins gate. Existing production approval and signed promotion checks continue to apply.
+If a complete window exhausts a budget, pause discretionary production changes, prioritize reliability fixes and recovery work, and document the owner's decision before resuming. Incident remediation and security fixes remain possible after review. This is an operator policy, not a new automatic Jenkins gate. Protected GitOps production review and preceding-environment rollout/smoke checks continue to apply.
 
 Server-side pricing, session ownership and checkout idempotency are release acceptance invariants exercised by the smoke suite. Violating those invariants blocks release or triggers incident response even when HTTP success ratios look healthy. Recovery objectives and accepted data-loss limits are in [recovery-targets.md](recovery-targets.md).

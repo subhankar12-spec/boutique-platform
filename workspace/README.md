@@ -26,24 +26,22 @@ Only the frontend is exposed, on local port 8080. Generated secrets in ignored `
 
 ## Delivery and deployment
 
-Service PRs run tests, builds and security scans on an isolated validation controller. Protected-main builds publish a tested image, versioned Helm chart, SBOM, scan report and signed release attestation. Jenkins opens GitOps PRs to promote the same signed chart package and immutable image digest through dev, staging and production. A fixed trusted policy job checks the candidate manifests and signatures. Argo CD reconciles merged changes; a read-only verifier measures rollout, runtime image IDs and HTTP behavior, then signs deployment evidence. Staging and production require matching evidence from the preceding environment. Production has an explicit approval; rollback uses previous verified evidence and a current-image guard.
-
-An initial bootstrap job publishes all four service selections together, avoiding incomplete first deployments. Separate controllers isolate PR code from release credentials. Environment locks serialize promotion and rollback through verification. These are implemented controls; the full GitHub-to-cluster path still needs execution on a supported host.
-
-Choose a deployment track:
-
-- **Laptop or Linux VM lab:** two separate kind clusters, with dev/staging separated from production; Calico policies, Argo CD, TLS ingress, verified PostgreSQL/Redis TLS and recovery drills. Allow 16 GB RAM and 30 GB free Docker storage, preferably 24–32 GB RAM. Local control planes and databases are single replica; their availability limits are documented.
-- **AWS reference:** separate VPCs/EKS clusters, private endpoints, managed data services, workload identities, external secrets, encrypted state and backups. Production data services use Multi-AZ configuration. No paid resources were provisioned.
-
-Monitoring includes Prometheus, Grafana dashboards, Alertmanager, Loki/Alloy, prepared Slack integration and a ServiceNow adapter. The production adapter uses a shared PostgreSQL queue with two replicas. Internal fixtures exercise notifications without sending live Slack messages or creating external tickets. Live credentials and ServiceNow configuration remain operator setup steps.
+Reviewed service main runs Jenkins tests, scans, builds, SBOM and publication.
+Jenkins opens GitOps PRs selecting immutable image digests and exact packaged
+Helm charts. Jenkins manifest checks validate manifests; human review/merge is
+the approval boundary. Argo CD deploys, then rollout/smoke checks establish
+runtime success. Promotion copies the same image/chart; rollback restores a
+service from protected Git history. One controller and a private rootless build
+agent run reviewed code. Untrusted PRs require isolated workers before enabling.
+No custom signing/evidence workflow or aggregate bootstrap job is required.
 
 ## Evidence and access limitations
 
-The app's functional smoke checks, real database/client TLS tests, queue integration tests, signed-delivery policy tests and actual Jenkins controller/plugin/pipeline checks have been exercised. See [validation](boutique-platform/docs/validation.md) for their scope.
+The app's functional smoke checks, real database/client TLS tests, queue integration tests, immutable promotion/rollback tests and actual Jenkins controller/plugin/pipeline checks have been exercised. See [validation](boutique-platform/docs/validation.md) for their scope.
 
 This cloud runner cannot validate the full two-cluster deployment: it has insufficient Docker disk space and restricted cgroups. All eight repositories are published under `subhankar12-spec`, with their `main` commits verified against GitHub. The owner created the repositories and granted the integration access; repository creation from this runner remains unavailable. Local source/Git archives preserve the work. Saving cloud environment configuration does not push repositories or activate the environment draft.
 
-Start with [production lab setup](boutique-platform/docs/production-lab.md), [Jenkins setup](boutique-platform/docs/jenkins-setup.md), [delivery evidence](boutique-gitops/docs/release-evidence.md), and the [AWS infrastructure guide](boutique-infrastructure/README.md).
+Start with [existing Debian/kind deployment](boutique-platform/docs/deploy-cicd-kind.md), [Jenkins setup](boutique-platform/docs/jenkins-setup.md), [Helm delivery](boutique-gitops/docs/helm-delivery.md), and the [AWS infrastructure guide](boutique-infrastructure/README.md).
 
 Application charts and AWS telemetry: see `boutique-gitops/docs/helm-delivery.md` and `boutique-infrastructure/docs/aws-observability.md`.
 

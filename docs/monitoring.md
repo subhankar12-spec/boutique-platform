@@ -1,3 +1,8 @@
+> Kubernetes defaults to Prometheus/Grafana, Alertmanager/Slack, Loki/Alloy.
+> ServiceNow and incident queue workers are optional (`incidentBridge.enabled=true`).
+> The integration, queue and mock exercises below require that explicit opt-in.
+> Default Alertmanager only requires `slack_webhook` in monitoring-integrations.
+
 # Monitoring and incident response
 
 This lab includes Prometheus application metrics, versioned Grafana dashboards, Alertmanager, Loki and Grafana Alloy. It exercises the same alert-to-response workflow used in production while keeping the default stack affordable. External receivers are prepared; no real Slack messages or ServiceNow incidents have been sent.

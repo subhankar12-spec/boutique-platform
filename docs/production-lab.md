@@ -1,8 +1,13 @@
+> Optional larger-host exercise. The existing 8 GiB Debian/kind deployment uses
+> [deploy-cicd-kind.md](deploy-cicd-kind.md), not this two-cluster bootstrap.
+> Current delivery uses reviewed GitOps PRs and ordinary rollout/smoke reports;
+> signed-release/evidence and aggregate bootstrap jobs have been removed.
+
 # Production delivery lab
 
 Follow [the main CI/CD-first deployment guide](deploy-cicd-kind.md) for the
 ordered setup. Cluster/controller bootstrap prepares the platform; Jenkins
-publishes the first signed releases before Argo deploys the app. A prior
+publishes the first published releases before Argo deploys the app. A prior
 Compose or manual Kubernetes application deployment is optional.
 
 Keep one repository per service. This lab uses the same reviewed releases, immutable image digests, Helm chart/image selections and verification gates as the AWS reference. Two independent Kubernetes clusters separate dev/staging from production; it does not create AWS resources or replace the existing Docker Compose installation.
@@ -56,7 +61,12 @@ The frontend origins are `https://dev.boutique.test:8443`, `https://staging.bout
 
 ## Prepare publication, credentials and releases
 
-Argo CD reads the published GitOps repository; local files alone cannot satisfy delivery. The eight repositories are already published. After preparing cluster foundations, configure trusted Jenkins, identities and protection, then release the four application services through their build/test/scan gates. Release the incident adapter separately when adding monitoring. For the first installation, run the four application `boutique-{service}/main` jobs with `DELIVER_TO_DEV=false` and retain their successful release build numbers. This publishes the quality-checked, signed images without trying to verify an incomplete application. Use the aggregate bootstrap below to select the initial four-service baseline. Subsequent main builds keep automatic dev delivery enabled. `lab-profiles/{environment}/values.yaml` supplements the environment Helm chart with local data/TLS configuration; it does not replace the release digest or rebuild an environment-specific image.
+Argo CD reads the published GitOps repository. Prepare the cluster foundations,
+then publish reviewed service main through the normal Jenkins gates. Select the
+four dev artifacts through ordinary boutique-promote PRs. Do not sync an
+incomplete environment. ServiceNow adapter publication is optional.
+`lab-profiles/ENV/values.yaml` adds local data/TLS without replacing the selected
+image digest or packaged chart. See [current delivery](deploy-cicd-kind.md).
 
 Use private files (`chmod 600`) for a read-only GitOps repository token and a GHCR `read:packages` token. Prefer short-lived GitHub App credentials and rotate them separately from the build/publish identity. Do not put tokens in command arguments, source files or chat.
 
@@ -75,7 +85,7 @@ Existing secrets are preserved rather than rotated implicitly. To rotate an exis
 
 ## Connect Argo and verify delivery
 
-Start `boutique-bootstrap` with `TARGET=dev` and the four signed release build numbers in `FRONTEND_BUILD`, `CATALOGUE_BUILD`, `CART_BUILD` and `ORDERS_BUILD`. Keep `PAUSE_FOR_INITIAL_SYNC=true`. The job validates all four releases, opens and merges the reviewed aggregate GitOps PR, then pauses before initial verification. At that pause, update your clean operator GitOps checkout and activate only dev:
+After all four dev selection PRs are reviewed/merged:
 
 ```bash
 git -C ../boutique-gitops pull --ff-only
@@ -84,39 +94,30 @@ python3 scripts/production-lab.py readiness --cluster nonprod --environment dev
 python3 scripts/production-lab.py verify --environment dev
 ```
 
-Continue the Jenkins pause once Argo synchronization has started. The bootstrap job runs `boutique-verify` for each selected service and produces four signed dev verification records. Do not activate staging while its release values still contain bootstrap tags.
-
-For the first staging release, run `boutique-bootstrap` with `TARGET=staging`, the same four release build numbers, and the corresponding dev verification builds in the four `*_EVIDENCE_BUILD` parameters. After its reviewed aggregate merge, use the initial-sync pause to activate staging:
+Promote each service to staging with boutique-promote, confirming dev smoke
+results before review. Merge all four first staging selections before activating:
 
 ```bash
 git -C ../boutique-gitops pull --ff-only
 python3 scripts/production-lab.py deploy --cluster nonprod --environment staging
 python3 scripts/production-lab.py readiness --cluster nonprod --environment staging
+python3 scripts/production-lab.py verify --environment staging
 ```
 
-The first production bootstrap similarly selects `TARGET=production`, consumes the four staging verification builds, and requires production approval before merging. Activate that approved production baseline at its initial-sync pause:
+Repeat staging-to-production promotion with independent production review;
+select all four releases before activating production:
 
 ```bash
 git -C ../boutique-gitops pull --ff-only
 python3 scripts/production-lab.py deploy --cluster production --environment production
 python3 scripts/production-lab.py readiness --cluster production --environment production
+python3 scripts/production-lab.py verify --environment production
 ```
 
-These environment selections avoid requiring a staging release before dev verification exists. Cluster foundations and credentials can be prepared ahead of time; Applications begin tracking main only after the selected environment has a complete approved digest baseline.
-
-`deploy` refuses every Boutique `bootstrap`, `local`, mutable tag or malformed digest before creating Applications. Argo must fetch the committed main branch; readiness requires Synced/Healthy applications, ready nodes/Calico, completed service rollouts, issued data/frontend certificates and digest-pinned running deployments. `verify` executes the real functional smoke suite through TLS ingress. Repeat verification for staging and production when their promotion gates select an approved digest. Successful rendering alone does not count as deployment evidence.
-
-Jenkins uses the separate deployment verifier and records evidence for the exact promoted digest/GitOps revision. Configure the trusted origin variables to the TLS URLs above. Supply each environment's CA as a secret file credential and export a namespace-scoped verifier identity:
-
-```bash
-python3 scripts/production-lab.py export-verifier --environment dev --duration 24h
-python3 scripts/production-lab.py export-verifier --environment staging --duration 24h
-python3 scripts/production-lab.py export-verifier --environment production --duration 24h
-```
-
-Upload only the generated `jenkins-verifier-{environment}.json` files to the corresponding Jenkins verification credentials. They cannot change deployments, read Secrets or access another application's namespace. Requested tokens expire within 24 hours; renew before a drill/build session. For a continuously operating platform, use automated short-lived workload identity rather than storing a long-lived admin token. The cloud counterpart uses the separate cluster/environment identity and its real private API endpoint.
-
-Argo and Grafana remain ClusterIP services. Access administration through an operator port-forward bound to loopback; obtain initial credentials locally without recording them in logs. Complete SSO/RBAC and remove bootstrap-admin dependence before exposing either service to a shared network. The existing AWS ingress/issuer configuration requires a real domain and ACME account; `.test` names and this local CA are only for the production-learning profile.
+Retain ordinary Argo/rollout/smoke reports and the GitOps merge commit. The helper
+rejects placeholder/mutable app images. It does not publish releases, approve PRs
+or sign verification records. TLS origins/CAs and scoped kubeconfigs are exported
+for the optional boutique-verify job; no additional agent label is required.
 
 ## Monitoring delivery exercises
 

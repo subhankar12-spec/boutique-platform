@@ -1,108 +1,25 @@
-# Shipyard Boutique: a beginner's complete architecture and deployment guide
+# Detailed beginner guide to Boutique
 
-**For deployment, start with the [main CI/CD-first kind guide](deploy-cicd-kind.md).**
-It gives the order: clone, prepare clusters/controllers, configure Jenkins,
-build/publish releases, deploy through GitOps/Argo, verify/promote, then monitor
-and practise recovery. Use this document for each phase's detailed explanation.
+The project is eight independent repositories with a small four-service app and
+production-style CI/CD. This edition simplifies delivery: one Jenkins controller,
+reviewed builds, image digests, protected GitOps PRs, Helm and Argo CD. Custom
+signed releases, deployment evidence, policy executor and aggregate bootstrap
+jobs have been removed.
 
-The [manual local kind exercise](deploy-local-kind.md) and Compose application
-startup are optional practice. You do not need to deploy the app manually before
-configuring CI/CD.
+**Deploy on your existing Debian/kind laptop:** follow
+[deploy-cicd-kind.md](deploy-cicd-kind.md) in order. It starts from your existing
+cluster and connected agent, uses GHCR images and app port 8088, and keeps
+Jenkins on port 8080. Do not mix its registry profile with the optional local-image
+exercise below. You do not need to manually deploy the app before CI/CD.
 
-This is the starting point for understanding and operating this project. You do
-not need to understand every file before starting. Work through the checkpoints,
-and return to the repository maps when a command or pipeline mentions a file.
+## 1. How to read this guide
 
-The project is a small ecommerce application surrounded by a substantial DevOps
-delivery system. The application gives you something real to deploy: browse
-products, maintain a cart and create orders. The DevOps system teaches builds,
-tests, security checks, image registries, Helm, GitOps, Kubernetes, monitoring,
-secrets, promotion, rollback and recovery.
-
-This guide describes the source published under the GitHub owner
-**subhankar12-spec**. The eight repositories are public. The Kubernetes/AWS
-configuration is not an already-running hosted service. In particular, the full
-two-cluster delivery chain still needs acceptance on your laptop or another
-supported host. A successful command in one phase does not establish completion
-of the later phases.
-
-## Contents
-
-- [1. Choose a learning path](#1-choose-a-learning-path)
-- [2. Understand the whole system](#2-understand-the-whole-system)
-- [3. Understand the application request flow](#3-understand-the-application-request-flow)
-- [4. Understand the eight repositories](#4-understand-the-eight-repositories)
-- [5. Understand the recurring file types](#5-understand-the-recurring-file-types)
-- [6. Prepare your Debian laptop](#6-prepare-your-debian-laptop)
-- [7. Clone the workspace](#7-clone-the-workspace)
-- [8. Run the application with Docker Compose](#8-run-the-application-with-docker-compose)
-- [9. Deploy the application in your kind cluster](#9-deploy-the-application-in-your-kind-cluster)
-- [10. Inspect and understand the Kubernetes deployment](#10-inspect-and-understand-the-kubernetes-deployment)
-- [11. Understand Helm and the environment profiles](#11-understand-helm-and-the-environment-profiles)
-- [12. Understand the Jenkins delivery architecture](#12-understand-the-jenkins-delivery-architecture)
-- [13. Configure Jenkins controllers and agents](#13-configure-jenkins-controllers-and-agents)
-- [14. Configure delivery credentials and GitHub protection](#14-configure-delivery-credentials-and-github-protection)
-- [15. Bootstrap the two-cluster production learning lab](#15-bootstrap-the-two-cluster-production-learning-lab)
-- [16. Build releases and install dev staging and production](#16-build-releases-and-install-dev-staging-and-production)
-- [17. Perform a routine release and rollback](#17-perform-a-routine-release-and-rollback)
-- [18. Install and understand monitoring](#18-install-and-understand-monitoring)
-- [19. Understand the AWS reference](#19-understand-the-aws-reference)
-- [20. Practice failures backup and recovery](#20-practice-failures-backup-and-recovery)
-- [21. Troubleshoot by following the dependency chain](#21-troubleshoot-by-following-the-dependency-chain)
-- [22. Stop safely and resume later](#22-stop-safely-and-resume-later)
-- [23. Know what is implemented and what remains](#23-know-what-is-implemented-and-what-remains)
-- [24. Follow a practical learning sequence](#24-follow-a-practical-learning-sequence)
-- [25. Glossary and command reference](#25-glossary-and-command-reference)
-
-## 1. Choose a learning path
-
-There are three deployment tracks, with a useful intermediate kind exercise:
-
-| Path | Purpose | What it starts | What it does not demonstrate |
-| --- | --- | --- | --- |
-| Docker Compose | Understand the app and debug services | Four apps, PostgreSQL and Redis on your laptop | Kubernetes, GitOps or signed promotion |
-| Single kind exercise | Learn Pods, Services, storage and Helm rendering | The same app in one chosen kind cluster | The complete protected delivery chain or cluster separation |
-| Two-cluster production learning lab | Practice the intended delivery and operational boundaries | Nonprod and production kind clusters, controllers, signed releases, optional monitoring | Independent host failure domains or managed database HA |
-| AWS reference | Study/configure managed infrastructure | Terraform definitions for EKS, VPCs, managed data, audit and observability | Automatic installation of every Kubernetes controller or a free deployment |
-
-The recommended path is the two-cluster CI/CD delivery lab. Follow
-[the main deployment guide](deploy-cicd-kind.md) in execution order:
-
-| Phase | Detailed reference here | Expected result |
-| --- | --- | --- |
-| Clone/install prerequisites | Sections 6–7 | Source and tools, no deployed app |
-| Prepare cluster foundations | Section 15.1–15.4 | Kubernetes, controllers and trust |
-| Configure Jenkins and access | Sections 13–14, then 15.5–15.6 | Agents, identities, protection and runtime secrets |
-| Build the four releases | Section 16.1 | Signed registry artifacts |
-| Deploy dev through GitOps/Argo | Section 16.2 | First verified application deployment |
-| Promote staging/production | Section 16.3–16.4 | Same artifacts, separate environments |
-| Monitor and practise recovery | Sections 18 and 20 | Operational signals and exercises |
-
-Chapter numbering groups the reference material; it is not a requirement to
-execute every chapter in numerical order. Sections 8–10 are an optional manual
-practice path, not prerequisites for the main workflow.
-
-The full delivery track requires identities, keys, branch protection, agents
-and registry access. An AWS account or real Slack/ServiceNow receiver is
-unnecessary for its default kind deployment.
-
-Do not mix the single-kind local image profile with the production learning
-profile. The first uses local tags for an introductory exercise. The second
-requires tested registry images selected by immutable digest and signed release
-records.
-
-### Hardware expectations
-
-| Exercise | Practical planning guidance |
-| --- | --- |
-| Compose only | Approximately 4 GiB available RAM, plus build/download storage |
-| One kind cluster | More capacity than Compose; an 8–12 GiB machine is a starting point, not a performance guarantee |
-| Two-cluster lab | The doctor requires at least 16 GiB RAM and 30 GiB free Docker storage; 24–32 GiB RAM is recommended |
-| Clusters plus controllers and isolated build VMs | Budget additional memory/storage for Jenkins, Java builds and both agent VMs; 32 GiB or more is much more comfortable |
-
-The two-cluster lab has six Kubernetes node containers: one control plane and
-two workers per cluster. A laptop can run out of memory even though a manifest's
-syntax is valid. Check the actual host before pulling several large stacks.
+Sections 2–5 explain the architecture and files. Sections 6–8 describe machine,
+cloning and optional Compose. Sections 9–10 are optional manual Kubernetes
+practice. Section 11 explains Helm. Current delivery, migration, environment
+separation and verification are in the main deployment guide linked above.
+Monitoring, AWS and recovery are retained as operating topics later in this file.
+Production is an operating environment with measured controls, not a tool count.
 
 ## 2. Understand the whole system
 
@@ -341,37 +258,24 @@ scanner findings.
 
 ~~~text
 boutique-ci/
-  vars/
-    servicePipeline.groovy    Shared app/incident-adapter build pipeline
-    releaseArtifact.groovy    Retrieve and verify a trusted release
-    gitopsPullRequest.groovy  Protection checks, PR and merge orchestration
-  pipelines/
-    bootstrap.Jenkinsfile    First complete four-service installation
-    promote.Jenkinsfile      Normal environment promotion
-    verify.Jenkinsfile       Read-only runtime/HTTP verification
-    rollback.Jenkinsfile     Restore a previously verified release
-    gitops-check.Jenkinsfile  Fixed trusted candidate-policy check
-  jenkins/
-    compose.yaml             Separate validation/release controllers
-    casc/jenkins.yaml         Jenkins Configuration as Code
-    jobs/                    Job DSL seed definitions
-    controller/              Controller image and plugin locks
-    agents/                  Common agent image and connection guide
-    scripts/                 Init, signing keys, tools and runtime checks
+  vars/servicePipeline.groovy    Shared application quality/publication stages
+  vars/releaseArtifact.groovy    Retrieve dev publishing artifacts
+  vars/gitopsPullRequest.groovy  Open a reviewable deployment PR
+  pipelines/seed-release.Jenkinsfile  Pipeline-based job creation
+  pipelines/promote.Jenkinsfile Copy immutable release selections
+  pipelines/rollback.Jenkinsfile Restore one service from Git history
+  pipelines/verify.Jenkinsfile   Read rollout state and run smoke tests
+  jenkins/jobs/release.groovy    Main-only Job DSL definitions
+  jenkins/compose.yaml           Optional fresh single-controller installation
+  jenkins/casc/jenkins.yaml      Declarative controller configuration
+  jenkins/agents/                Common inbound build agent
+  jenkins/scripts/               Verified installers and real controller checks
 ~~~
 
-An application Jenkinsfile is small because it calls the common shared library.
-The shared library is selected using a reviewed full CI commit, with version
-overrides disabled. That keeps pipeline logic consistent across services.
-
-The delivery job definitions are loaded from protected CI configuration.
-The GitOps policy job reads candidate PR files as data; it must not execute a
-candidate's replacement policy script.
-
-There is currently no Jenkinsfile in the GitOps repository itself. The
-validation seed also declares a GitOps multibranch item, but that item does not
-provide the working policy gate. Use the separately seeded
-**boutique-gitops-check** job from this CI repository.
+A service's Jenkinsfile calls the shared library rather than copying every
+stage. The library is pinned to a reviewed full commit. Job DSL creates job
+configuration; Pipeline DSL runs builds. This distinction does not imply two
+programming languages: both use Groovy syntax.
 
 ### 4.6 Infrastructure repository
 
@@ -426,14 +330,10 @@ boutique-gitops/
   monitoring/               Shared monitoring Helm chart and profiles
   platform/                 Ingress, issuers and AWS secret integration
   dependencies/homelab/      Optional separate local-data chart
-  promotionrecords/         Created by actual signed delivery changes
-  schemas/                  Release, chart and evidence data contracts
+  .github/CODEOWNERS         Review ownership for deployment/configuration
+  laptop-profiles/dev/       Existing-kind registry deployment
   scripts/                  Render, validate, promote and recovery tools
 ~~~
-
-Some directories, such as promotionrecords, appear when real delivery records
-are created. Do not conclude that a release happened because a schema or example
-file exists.
 
 This repository answers “which image and which chart should dev run?” It does
 not contain the app's normal business logic. A catalogue source change belongs
@@ -761,11 +661,11 @@ service talks to which database. Continue to kind only after this works.
 ## 9. Deploy the application in your kind cluster
 
 **Optional manual Kubernetes exercise.** This is not the first application
-deployment step in the main CI/CD workflow. That workflow publishes signed
+deployment step in the main CI/CD workflow. That workflow publishes tested
 releases first and lets Argo deploy the reviewed GitOps baseline.
 
 This is the beginner exercise. It deliberately uses locally built images and
-directly applied Helm-rendered manifests. It does not create signed production
+directly applied Helm-rendered manifests. It does not establish production
 release evidence, Argo Applications, TLS ingress or the two-cluster boundary.
 
 ### 9.1 Select an existing cluster or create a dedicated one
@@ -1077,1057 +977,80 @@ project's application recovery workflow.
 Read [Helm delivery](https://github.com/subhankar12-spec/boutique-gitops/blob/main/docs/helm-delivery.md)
 when you are ready to understand chart checksums and promotion records.
 
-## 12. Understand the Jenkins delivery architecture
-
-### 12.1 Why there are two Jenkins controllers
-
-A **controller** is the Jenkins server that stores job configuration, credentials,
-build history and the queue. An **agent** is the machine that runs a job's commands.
-The controllers have zero executors: they organize work; agents execute it.
-
-There are two separate trust boundaries:
-
-| Controller | Local UI | What it handles | What it must never receive |
-| --- | --- | --- | --- |
-| Validation | http://127.0.0.1:8090 | Candidate branches and origin PR tests | Release signing keys, package publication, GitOps writes, AWS or cluster access |
-| Release | http://127.0.0.1:8091 | Protected main builds and reviewed delivery | Arbitrary unreviewed PR execution |
-
-A PR can change a Jenkinsfile or a test script. Running that script is running
-the author's code. A label alone does not stop a malicious Jenkinsfile from
-requesting another label or credential. Separate controllers, agents and Docker
-daemons make the separation meaningful.
-
-Two controllers are a deliberate security choice in this project, not a claim
-that every company uses exactly two. Companies implement the same trust
-separation with different products and isolation models.
-
-### 12.2 Follow a release from source to production
-
-~~~mermaid
-flowchart TD
-  PR[Application pull request] --> V[Validation controller]
-  V --> T[Isolated tests, build and scans]
-  T --> R[Review and merge protected main]
-  R --> B[Release controller: trusted build]
-  B --> G[Publish image and Helm chart to GHCR]
-  B --> S[Sign release record and archive evidence]
-  S --> D[Prepare dev GitOps pull request]
-  D --> P[Fixed trusted GitOps policy check]
-  P --> M[Merge allowed reviewed change]
-  M --> A[Argo CD reconciles desired state]
-  A --> E[Read-only rollout and HTTPS verification]
-  E --> F[Sign dev verification evidence]
-  F --> ST[Promote same image and chart to staging]
-  ST --> SE[Verify and sign staging evidence]
-  SE --> PA[Production approval and GitHub review]
-  PA --> PROD[Promote same image and chart to production]
-  PROD --> PE[Verify and sign production evidence]
-~~~
-
-**Build once, promote the same artifact** means production does not rebuild the
-source using production-specific settings. Dev, staging and production select
-the same image digest and chart package; their configuration and credentials
-are different.
-
-### 12.3 Exact shared service pipeline stages
-
-The application's small Jenkinsfiles call **vars/servicePipeline.groovy** in
-boutique-ci. The shared library is pinned to a reviewed full CI commit.
-The platform Jenkinsfile uses the same pipeline for the incident bridge.
-
-The outer stage is **Validate, build and publish**. Its nested stages are:
-
-| Stage | What happens | When |
-| --- | --- | --- |
-| Checkout | Clean agent workspace, checkout source, record full commit | Validation and release |
-| Validate protected source | Confirm source belongs to protected origin main | Release |
-| Source secret scan | Trivy filesystem scan, failing on configured high/critical findings | Both |
-| Monitoring configuration | Validate alert/routing/dashboard configuration | Incident bridge only |
-| AWS trust bundle | Verify the reviewed public RDS CA bundle | Orders release |
-| Helm validation and packaging | Lint service chart, render Kubernetes resources, schema-check, package chart | Four application services |
-| Test and build | Build image through Dockerfile test/build stages | Both |
-| Durable queue integration | Run the incident adapter's real PostgreSQL queue tests | Incident bridge only |
-| Security and SBOM | Scan image with Trivy and generate CycloneDX inventory with Syft | Both |
-| Publish tested artifact | Publish immutable image/chart, produce signed release record and archive evidence | Release only |
-
-After that outer stage releases its build executor, **Deliver to dev** can run
-for application releases. It is conditional: the controller must be the release
-controller, the source must be main, DELIVER_TO_DEV must be enabled, and dev must
-already have a complete baseline. Incident bridge publication does not
-automatically promote the four-service application.
-
-The Dockerfiles run meaningful language-specific tests: frontend Node tests,
-catalogue Go tests, cart Python tests and orders Maven verification. The final
-cart build depends on the test stage, so tests are part of producing its image.
-
-The image scan uses **--ignore-unfixed**. That means high/critical findings with
-available fixes are gated according to the scanner configuration; it does not
-prove there are zero vulnerabilities. Reviewed exceptions live in .trivyignore.
-Inspect scan evidence and expiry/review of exceptions rather than treating a
-green pipeline as a security guarantee. The actual configured ignore filename
-is .trivyignore.yaml.
-
-### 12.4 Understand the four identifiers you see everywhere
-
-| Identifier | Example shape | Meaning |
-| --- | --- | --- |
-| Source commit | 40 hexadecimal characters | Exact application source revision |
-| Image digest | ghcr.io/owner/boutique-cart@sha256:64-hex-characters | Exact registry content |
-| Chart version | 0.1.0 followed by the full source commit as its prerelease suffix | Exact packaged Kubernetes templates |
-| GitOps commit | A different 40-character commit | Exact reviewed environment selection/configuration |
-
-The release initially publishes a source-commit tag, but deployment selects a
-digest. A tag is a movable label in a registry; a digest identifies content.
-Publication refuses to overwrite an existing source tag/chart version.
-
-The version-2 signed release record binds source, image digest, chart version,
-chart archive checksum, OCI chart manifest digest and scan/SBOM checksums.
-Version-1 records do not satisfy the current policy.
-
-There are **two Ed25519 key pairs**. The artifact key signs what the trusted
-build produced. The evidence key signs what the trusted verifier observed.
-Keeping these separate prevents a build signature from being mistaken for a
-successful deployment.
-
-A successful GitOps merge only says desired state changed. Deployment success
-also requires Argo reconciliation, matching running images/chart provenance,
-rollout health and a real HTTPS smoke test.
-
-### 12.5 How many pipelines are there per service?
-
-Each application service has a repository Jenkinsfile and two job contexts:
-validation branches/PRs on the validation controller and protected main on the
-release controller. They share implementation rather than duplicating a long
-Jenkinsfile in every repository.
-
-Delivery is shared across services:
-
-| Shared job | Job definition in boutique-ci | Purpose |
-| --- | --- | --- |
-| boutique-bootstrap | pipelines/bootstrap.Jenkinsfile | Select first complete four-service baseline |
-| boutique-promote | pipelines/promote.Jenkinsfile | Promote one released service |
-| boutique-verify | pipelines/verify.Jenkinsfile | Verify actual target state and sign evidence |
-| boutique-rollback | pipelines/rollback.Jenkinsfile | Select a previously verified release |
-| boutique-gitops-check | pipelines/gitops-check.Jenkinsfile | Evaluate candidate changes with protected policy |
-| boutique-infrastructure | Infrastructure pipeline definition | Optional reviewed AWS plan/apply |
-
-The GitOps repository itself currently has **no Jenkinsfile**. Its validation
-seed entry can discover a multibranch item, but that is not a functioning
-GitOps pipeline. The supported required policy result comes from
-**boutique-gitops-check**, defined in the protected CI repository.
-
-## 13. Configure Jenkins controllers and agents
-
-For the main workflow, prepare cluster foundations first (section 15.1–15.4),
-then configure Jenkins here, before any application deployment. Agents and
-credentials are operator setup steps; starting controller Compose does not
-provision them. Follow [the ordered main guide](deploy-cicd-kind.md).
-
-### 13.1 Start and inspect the controllers
-
-~~~bash
-cd "$BOUTIQUE_ROOT/boutique-ci/jenkins"
-./scripts/init-local.sh
-python3 scripts/init-signing-keys.py
-docker compose up -d --build
-docker compose ps
-python3 scripts/doctor.py
-~~~
-
-Open validation at port 8090 and release at 8091. The generated passwords are
-in the ignored **boutique-ci/jenkins/.env** file. Open it in a local private
-editor to find the admin, release-manager and platform-admin account settings.
-Do not paste its contents into an issue, chat or build log.
-
-Keep .env and both controller volumes. Rerunning init preserves existing values.
-The initializer sets BOUTIQUE_CI_LIBRARY_REF to the current CI commit only if
-the setting is missing. Review that full commit; a later git pull does not
-silently approve a shared-library upgrade.
-
-The controller image pins Jenkins and checksum-locked plugins. Its
-Configuration as Code file configures the realm, controller role and library.
-For shared use, local bootstrap accounts need replacement with organizational
-identity, TLS and deliberate access policies.
-
-### 13.2 Allocate agents by role
-
-In **Manage Jenkins → Nodes → New Node**, create permanent inbound nodes,
-choose one executor, assign the label below and use the WebSocket launch
-instructions displayed by Jenkins.
-
-| Controller | Suggested node name / label | Placement |
-| --- | --- | --- |
-| Validation | boutique-isolated-builder / isolated-builder | Disposable Debian VM, dedicated rootless Docker |
-| Release | boutique-trusted-release / trusted-release | Separate trusted Debian VM, dedicated rootless Docker |
-| Release | boutique-trusted-deploy / trusted-deploy | Trusted operator host/container with cluster and app routing |
-| Release | boutique-policy-check / policy-check | Separate protected executor, no Docker socket or cluster credential |
-| Release | boutique-terraform / terraform-trusted | Optional trusted AWS-connected agent |
-
-Node names are identifiers; **labels** are what the pipelines request.
-Do not assign every label to one machine. Do not connect the validation agent
-to the release controller.
-
-The fixed policy job needs its own executor because the deploy parent waits
-for it while keeping its workspace. With one shared executor, the child can
-wait indefinitely for the parent to release the resource it needs.
-
-The environment delivery lock stays held through downstream verification.
-The verifier must not reacquire the parent's same lock. The checked-in jobs
-already implement this relationship; do not casually add another identical lock.
-
-### 13.3 Prepare a native build agent on a dedicated Debian VM
-
-A native agent is often easier to understand first than an agent container:
-the agent process and its rootless Docker daemon see the same filesystem paths.
-Use a fresh Debian 13 VM for each build trust boundary. Debian 12 does not
-normally provide openjdk-21-jdk from its standard package repositories; use a
-reviewed Java 21 distribution there instead of blindly copying that apt line.
-
-On each **agent VM**, install Git, Python/PyYAML, curl, OpenSSL, jq, unzip,
-Java 21 and the Docker packages using the official signed Debian Docker
-repository procedure from chapter 6.
-
-~~~bash
-sudo apt-get update
-sudo apt-get install -y \
-  git python3 python3-yaml curl ca-certificates openssl jq unzip \
-  openjdk-21-jdk uidmap dbus-user-session slirp4netns \
-  docker-ce-rootless-extras
-java -version
-~~~
-
-Use a dedicated, non-root agent user with a real login session. On a fresh
-agent VM where you have chosen rootless Docker, stop the rootful daemon:
-
-~~~bash
-# Agent VM only. Do not run this on the laptop hosting your kind clusters.
-sudo systemctl disable --now docker.service docker.socket
-~~~
-
-Log in as the agent user over SSH. As that user:
-
-~~~bash
-dockerd-rootless-setuptool.sh install
-systemctl --user enable --now docker
-export DOCKER_HOST="unix://$XDG_RUNTIME_DIR/docker.sock"
-docker info
-~~~
-
-An administrator can enable user lingering so the user's daemon survives
-logout, substituting the actual agent account:
-
-~~~bash
-sudo loginctl enable-linger ciagent
-~~~
-
-Rootless setup requires working user namespaces and subordinate UID/GID ranges.
-Use the official rootless troubleshooting guide if setup fails; do not solve
-it by attaching an untrusted agent to the laptop's rootful socket.
-
-Clone the reviewed CI repository on this VM and install its verified tools:
-
-~~~bash
-git clone https://github.com/subhankar12-spec/boutique-ci.git "$HOME/boutique-ci"
-python3 "$HOME/boutique-ci/jenkins/scripts/install-agent-tools.py" \
-  --destination "$HOME/boutique-agent-tools"
-export PATH="$HOME/boutique-agent-tools/bin:$PATH"
-python3 "$HOME/boutique-ci/jenkins/scripts/install-agent-tools.py" \
-  --destination "$HOME/boutique-agent-tools" --verify-only
-~~~
-
-Review the checked-out CI commit before using its installer. Set PATH and
-DOCKER_HOST in the agent's service/session environment as well; exporting them
-in an unrelated terminal does not change a running Java process.
-
-### 13.4 Make the controller reachable without exposing it publicly
-
-The Compose controller ports bind to the laptop's loopback interface.
-An agent VM cannot connect to LAPTOP_IP:8090 merely because it can ping the
-laptop. The listener is not bound to that network interface.
-
-For an initial private lab, open an SSH tunnel **from the validation VM**
-to your laptop, using your real SSH user and address:
-
-~~~bash
-ssh -N \
-  -L 127.0.0.1:18090:127.0.0.1:8090 \
-  operator@LAPTOP_IP
-~~~
-
-On the trusted release VM, use a different tunnel:
-
-~~~bash
-ssh -N \
-  -L 127.0.0.1:18091:127.0.0.1:8091 \
-  operator@LAPTOP_IP
-~~~
-
-Keep each tunnel terminal open. Validation's VM-local controller URL is
-http://127.0.0.1:18090/; release's is http://127.0.0.1:18091/.
-These local HTTP connections travel inside the authenticated SSH tunnel.
-For continuous operation, provision managed tunnels or reviewed HTTPS
-controller endpoints with proper CA trust.
-
-Save the node's Jenkins-generated agent secret in a private mode-0600 file.
-It is a Jenkins remoting secret, not a GitHub token.
-Download agent.jar from the appropriate reachable controller.
-
-Example on the trusted VM after exporting the private secret-file path:
-
-~~~bash
-umask 077
-mkdir -p "$HOME/.local/share/boutique-agent"
-curl -fsS http://127.0.0.1:18091/jnlpJars/agent.jar \
-  -o "$HOME/.local/share/boutique-agent/agent.jar"
-
-# BOUTIQUE_AGENT_SECRET_FILE must name your private node-secret file.
-test -f "$BOUTIQUE_AGENT_SECRET_FILE"
-java -jar "$HOME/.local/share/boutique-agent/agent.jar" \
-  -url http://127.0.0.1:18091/ \
-  -name boutique-trusted-release \
-  -secret "@$BOUTIQUE_AGENT_SECRET_FILE" \
-  -webSocket \
-  -workDir "$HOME/.local/share/boutique-agent/work"
-~~~
-
-The secret-file syntax keeps the value out of command-line arguments.
-For validation, change URL and node name to its own registered node.
-Confirm the node appears online before trying a build.
-
-### 13.5 Container agents for trusted deploy and policy work
-
-From the CI repository root:
-
-~~~bash
-cd "$BOUTIQUE_ROOT/boutique-ci"
-docker build --pull --platform linux/amd64 \
-  -f jenkins/agents/Dockerfile -t boutique-agent:local .
-~~~
-
-The common image uses a fixed signed Debian snapshot and verified upstream
-tools. Its complete image build/scan has not been validated in this cloud
-runner: snapshot access returned HTTP 403 and Docker capacity was limited.
-Build and scan it on your supported host. A failure is a real prerequisite
-to resolve; do not turn off repository signatures/checksums.
-
-Create a private secret file and a writable private workspace for the deploy
-node outside the source repositories. Export their paths as
-BOUTIQUE_AGENT_SECRET_FILE and BOUTIQUE_AGENT_WORKSPACE.
-
-~~~bash
-test -f "$BOUTIQUE_AGENT_SECRET_FILE"
-test -d "$BOUTIQUE_AGENT_WORKSPACE"
-docker run --rm --name boutique-trusted-deploy --network host \
-  --user "$(id -u):$(id -g)" \
-  --add-host dev.boutique.test:127.0.0.1 \
-  --add-host staging.boutique.test:127.0.0.1 \
-  --add-host production.boutique.test:127.0.0.1 \
-  -e JENKINS_URL=http://127.0.0.1:8091/ \
-  -e JENKINS_AGENT_NAME=boutique-trusted-deploy \
-  -e JENKINS_WEB_SOCKET=true \
-  -e JENKINS_AGENT_WORKDIR=/workspace \
-  -v "$BOUTIQUE_AGENT_SECRET_FILE:/run/secrets/agent-secret:ro" \
-  -v "$BOUTIQUE_AGENT_WORKSPACE:/workspace" \
-  boutique-agent:local -secret @/run/secrets/agent-secret
-~~~
-
-The explicit -secret @/run/secrets/agent-secret argument tells Remoting to read
-the mounted secret file. The official entrypoint does not read a secret-file
-environment variable; omitting this argument leaves the connection secret unset.
-
-Linux host networking lets this trusted container reach loopback controller,
-kind API and ingress ports. It does not inherit the host's /etc/hosts;
-the three --add-host entries supply the application names.
-There is deliberately no Docker socket mount.
-
-For policy-check, register a separate node, use a different private secret and
-workspace, and change the container/node name. It needs the release controller,
-protected tools and its narrow GitHub checks credential. It needs neither a
-Docker socket nor cluster/signing credentials.
-
-For Docker-using container build agents, a workspace must appear at the same
-absolute path in the agent and daemon host because tests bind-mount fixtures.
-Follow the [agent guide](https://github.com/subhankar12-spec/boutique-ci/blob/main/jenkins/agents/README.md)
-for that optional layout. Native agents on dedicated VMs avoid this mismatch.
-
-### 13.6 Create the seed jobs
-
-The seed is a job that creates the other Jenkins jobs from reviewed Groovy DSL.
-
-For the release controller, use a version-controlled Pipeline seed:
-
-1. Add its read-only github-read credential, described in chapter 14.
-2. Create a **Pipeline** job named boutique-seed-release through the Jenkins UI.
-   If a Freestyle seed already exists, disable it and create a new Pipeline item;
-   Jenkins does not convert job types through the ordinary configuration page.
-3. Choose **Pipeline script from SCM**, **Git**, the boutique-ci repository URL
-   and github-read. Set the branch specifier to the full reviewed commit that
-   contains pipelines/seed-release.Jenkinsfile, rather than a moving branch.
-4. Set **Script Path** to pipelines/seed-release.Jenkinsfile and save.
-   The file selects trusted-release and checks BOUTIQUE_CONTROLLER_ROLE=release.
-5. Review the checked-out DSL and any necessary script approvals before running.
-   Do not approve arbitrary signatures from an untrusted job.
-6. Run the seed with **SUPPRESS_AUTOMATIC_BUILDS=true** (the default).
-   It creates main-only release jobs without automatically launching service
-   builds from indexing or SCM events. Manual builds remain available.
-7. After delivery credentials, GitHub protection and bootstrap are configured,
-   rerun the seed with **SUPPRESS_AUTOMATIC_BUILDS=false** to enable automatic
-   service builds. This changes trigger policy; it does not deploy an application.
-
-The separate validation controller uses the operator-reviewed
-jenkins/jobs/validation.groovy definition. Keep validation credentials and
-agents isolated from release; do not run that seed on this laptop release
-controller. The release Pipeline seed does not configure validation jobs.
-
-For a localhost-only lab, GitHub cannot reach your controller webhook.
-Start with **Scan Multibranch Pipeline Now** and explicit job runs.
-The jobs also configure periodic discovery. Later use an authenticated
-HTTPS webhook/dispatcher with signature validation rather than exposing the
-bootstrap HTTP controller to the internet.
-
-Read [Jenkins setup](jenkins-setup.md) for the narrower operator reference.
-
-## 14. Configure delivery credentials and GitHub protection
-
-### 14.1 Different credentials solve different problems
-
-These credentials do not already exist merely because repositories are public:
-
-| Jenkins credential ID | Type | Consumer and permission |
-| --- | --- | --- |
-| github-read | Username/password | SCM reads; independently scoped on each controller |
-| ghcr-publish | Username/password | Release controller package publication |
-| gitops-pr | Username/password | Trusted delivery bot: GitOps contents/PR writes and branch-protection metadata read |
-| gitops-checks | Secret text | Fixed policy job: repository reads and commit-status writes |
-| release-artifact-signing-key | Secret file | Artifact private Ed25519 key |
-| release-artifact-public-key | Secret file | Independently trusted artifact public key |
-| release-evidence-signing-key | Secret file | Deployment-evidence private Ed25519 key |
-| release-evidence-public-key | Secret file | Independently trusted evidence public key |
-| kubeconfig-dev | Secret file | Expiring dev rollout reads and Argo Application reads |
-| kubeconfig-staging | Secret file | Equivalent staging reads |
-| kubeconfig-production | Secret file | Equivalent production reads |
-| boutique-ca-dev | Secret file | Nonprod public TLS root certificate |
-| boutique-ca-staging | Secret file | Same nonprod public TLS root certificate |
-| boutique-ca-production | Secret file | Production public TLS root certificate |
-
-Use Jenkins credential settings, with the exact IDs expected by the code.
-Grant the smallest practical scope and restrict trusted credential use to
-trusted jobs. A masked log is not a permission boundary.
-
-GitHub Apps are preferable for supported short-lived SCM/API access, but an
-installation ID is not a usable credential. Select an authentication method
-compatible with the job's bindings. GHCR package publication/pulls may require
-a supported classic token with the appropriate package scopes; do not assume
-an SCM GitHub App token automatically supports every registry operation.
-
-The gitops-pr identity must be able to inspect branch protection as well as
-write a PR. GitHub App permission models include administration read for that
-metadata. Test the actual scoped identity without granting unnecessary
-administration write or protection-bypass privileges.
-
-### 14.2 Upload signing keys without committing them
-
-After init-signing-keys.py, the private directory is:
-
-~~~text
-boutique-ci/jenkins/.delivery-secrets/
-  release-artifact-signing-key.pem
-  release-artifact-public-key.pem
-  release-evidence-signing-key.pem
-  release-evidence-public-key.pem
-~~~
-
-Upload each file to the matching Jenkins file credential.
-Directory mode is 0700 and files are 0600. Keep an encrypted independent backup.
-Losing keys is different from losing source code.
-
-A public key is not secret, but its **integrity** matters: replacing it with
-an attacker's key changes what signatures the system trusts.
-Never trust a key supplied inside the release record it is meant to verify.
-Key rotation must account for retained release/evidence signatures.
-
-### 14.3 Configure the GitOps main branch
-
-In boutique-gitops on GitHub, configure protection for main:
-
-| Required setting | Why |
-| --- | --- |
-| Required status boutique/gitops-policy | Fixed trusted job checks the actual candidate |
-| Require branch up to date / strict status checks | Policy must evaluate against current base |
-| Include/enforce protection for administrators | Delivery identities must not bypass review |
-| Require CODEOWNER approval | Owned policy and staging/production paths require review |
-| Dismiss stale approvals after new commits | Approval of old content cannot authorize new content |
-| Enable repository auto-merge | Allows guarded dev automation |
-| Restrict force pushes/deletion and trusted-definition writes | Protects the source of delivery authority |
-
-The implementation checks these requirements, including administrator
-enforcement; it will reject missing protection rather than quietly deliver.
-GitHub's UI/plan features can differ, so verify the effective protection
-returned for main.
-
-For automated dev delivery, set the general required review count to **zero**
-while keeping CODEOWNER review required. Dev release selections/packages/records
-are intentionally unowned; owned paths still require their CODEOWNER.
-If you prefer a review for every dev change, require it and disable dev
-auto-merge. The bot must still wait for the policy check.
-
-Use a separate bot/App identity to create delivery PRs and your human identity
-to approve owned paths. GitHub does not allow an author to approve their own PR.
-Using only your own token for both creates a practical production/staging
-review dead end.
-
-Protect main in application, CI, infrastructure and platform repositories too.
-The precise application test status names come from your actual Jenkins/GitHub
-integration; observe a real validation run before making a nonexistent context
-mandatory. Protect changes to shared-library/policy code especially carefully.
-
-### 14.4 Configure origins and verify the checklist
-
-The release controller's configured lab origins are:
-
-~~~text
-BOUTIQUE_DEV_ORIGIN=https://dev.boutique.test:8443
-BOUTIQUE_STAGING_ORIGIN=https://staging.boutique.test:8443
-BOUTIQUE_PRODUCTION_ORIGIN=https://production.boutique.test:9443
-~~~
-
-They must match frontend PUBLIC_ORIGIN, DNS/hosts entries and actual certificates.
-The verifier's CA files must trust the correct cluster's root.
-
-Before your first release, confirm:
-
-- Both controllers are reachable and have zero executors.
-- Validation can execute tests but has no publication/delivery credentials.
-- Trusted release, deploy and policy nodes are online with different workspaces.
-- Rootless Docker works on both isolated build VMs.
-- The shared library points at the reviewed CI commit.
-- GHCR publication and separate read/pull authentication are configured.
-- Artifact and evidence keys exist under the exact credential IDs.
-- GitOps protection and the separate reviewer identity are ready.
-
-Cluster verifier credentials are configured in section 15.6 after the foundation
-exists. In the main execution order, the foundation was prepared before Jenkins.
-AWS backend/tfvars/role credentials are unnecessary for kind.
-
-## 15. Bootstrap the two-cluster production learning lab
-
-This is the cluster foundation for the recommended CI/CD-first workflow.
-It creates **boutique-nonprod** and **boutique-production**, with dedicated local
-state; an earlier manual single-kind app deployment is not required.
-If you already have another kind cluster, preserve it unless you intentionally
-decide to remove it.
-
-### 15.1 Understand what bootstrap installs
-
-| Component | Purpose |
-| --- | --- |
-| kind with pinned Kubernetes node image | Two separate Kubernetes APIs |
-| One control-plane plus two workers per cluster | Practice rolling updates and scheduling |
-| Calico | Enforce Kubernetes network policies |
-| Argo CD | Reconcile reviewed GitOps desired state |
-| cert-manager | Issue and renew application/data leaf certificates |
-| Traefik | Route HTTPS requests into frontend Services |
-| Independent root CA per cluster | Establish private lab TLS trust |
-
-The production-lab versions.lock.json controls kind, node images, controller
-manifests and image digests. The full lab uses its own locked kind version,
-not simply whichever kind binary you happen to have globally.
-
-Single control planes and local single-replica databases remain availability
-limits. Two clusters on one laptop share the laptop's failure domain.
-
-### 15.2 Preflight before creating anything
-
-~~~bash
-cd "$BOUTIQUE_ROOT/boutique-platform"
-export PATH="$BOUTIQUE_ROOT/boutique-platform/.tools:$PATH"
-python3 scripts/production-lab.py fetch-tools
-python3 scripts/production-lab.py fetch-manifests
-python3 scripts/production-lab.py doctor
-~~~
-
-The doctor checks host/platform/tooling/storage prerequisites. The host needs
-working privileged containers, writable cgroups and kernel networking support.
-The 16 GiB RAM and 30 GiB free Docker disk checks are minimums, not a promise
-that both clusters, controllers and build VMs will fit comfortably.
-VFS requires much more disk; 60 GiB free is the documented minimum there.
-
-Check your host/VPN routes before bootstrap:
-
-~~~bash
-ip route
-cat local/production-lab/kind-nonprod.yaml
-cat local/production-lab/kind-production.yaml
-~~~
-
-The configured pod CIDRs include 192.168.0.0/16 and 172.20.0.0/16.
-Home LANs and Docker/VPN networks can overlap these ranges.
-If they overlap your environment, review the kind and Calico networking
-configuration together before bootstrap; changing only one side is not a
-complete network change. Use a suitable isolated VM/network if necessary.
-
-If this preflight fails in a nested cloud runner, use a supported Linux host
-instead of disabling safety checks. A writable source checkout is not proof
-that nested kubelet/networking will work.
-
-### 15.3 Create the foundations
-
-~~~bash
-python3 scripts/production-lab.py bootstrap --cluster nonprod
-python3 scripts/production-lab.py bootstrap --cluster production
-~~~
-
-Bootstrap is not application deployment. At this stage you should have
-clusters/controllers and trust, but no complete signed application baseline.
-
-Private operator state lives here:
-
-~~~text
-boutique-platform/local/production-lab/
-  .cache/                         # Downloaded verified tools/manifests
-  .state/
-    nonprod/
-      kubeconfig                 # Administrative operator access
-      ca/ca.crt                  # Public root certificate
-      ca/ca.key                  # Private signing key: protect and back up
-    production/
-      kubeconfig
-      ca/ca.crt
-      ca/ca.key
-~~~
-
-These directories are ignored by Git. Preserve them on reruns; missing or
-inconsistent trust/credential state should be investigated, not overwritten.
-
-The helper uses its own kubeconfig files. Make them available explicitly
-in your operator terminal:
-
-~~~bash
-export BOUTIQUE_NONPROD_KUBECONFIG="$BOUTIQUE_ROOT/boutique-platform/local/production-lab/.state/nonprod/kubeconfig"
-export BOUTIQUE_PRODUCTION_KUBECONFIG="$BOUTIQUE_ROOT/boutique-platform/local/production-lab/.state/production/kubeconfig"
-export KUBECONFIG="$BOUTIQUE_NONPROD_KUBECONFIG:$BOUTIQUE_PRODUCTION_KUBECONFIG"
-
-kubectl --context kind-boutique-nonprod get nodes
-kubectl --context kind-boutique-production get nodes
-kubectl --context kind-boutique-nonprod -n argocd get pods
-kubectl --context kind-boutique-production -n cert-manager get pods
-~~~
-
-Do not expect these contexts to appear in your old single-cluster kubeconfig.
-Keep specifying context in every manual Kubernetes command.
-
-### 15.4 Configure hostnames and TLS trust
-
-Open your laptop hosts file:
-
-~~~bash
-sudoedit /etc/hosts
-~~~
-
-Add this line if it is not already present:
-
-~~~text
-127.0.0.1 dev.boutique.test staging.boutique.test production.boutique.test
-~~~
-
-Check name resolution:
-
-~~~bash
-getent hosts dev.boutique.test
-getent hosts staging.boutique.test
-getent hosts production.boutique.test
-~~~
-
-All three lab names must resolve to loopback on the operator host.
-The nonprod cluster exposes HTTPS on 8443; production uses 9443.
-
-The smoke suite uses the explicit matching CA file and verifies the hostname.
-For browser access, import the appropriate public ca.crt into the browser's
-trusted authorities. Some browsers use a separate trust store.
-
-Optionally, on your own lab laptop, add these reviewed public roots to Debian's
-system trust store:
-
-~~~bash
-sudo install -m 0644 \
-  "$BOUTIQUE_ROOT/boutique-platform/local/production-lab/.state/nonprod/ca/ca.crt" \
-  /usr/local/share/ca-certificates/boutique-nonprod.crt
-sudo install -m 0644 \
-  "$BOUTIQUE_ROOT/boutique-platform/local/production-lab/.state/production/ca/ca.crt" \
-  /usr/local/share/ca-certificates/boutique-production.crt
-sudo update-ca-certificates
-~~~
-
-Import **ca.crt**, never ca.key. Trusting a root authorizes certificates it
-signs; protect its private key. Leaf renewal is automated by cert-manager, but
-the generated one-year local root needs a planned rotation.
-
-### 15.5 Create registry and runtime secrets
-
-The lab secrets command currently requires a registry token file even if
-you later make the application packages public.
-Use a read-only GHCR pull identity, separate from the publisher.
-
-Create a private directory outside Git and enter the token locally without
-putting it in command history:
-
-~~~bash
-umask 077
-mkdir -p "$HOME/.config/boutique-secrets"
-chmod 700 "$HOME/.config/boutique-secrets"
-read -r -s -p "GHCR read-packages token: " BOUTIQUE_PULL_TOKEN
-printf '\n'
-printf '%s' "$BOUTIQUE_PULL_TOKEN" > "$HOME/.config/boutique-secrets/ghcr-read-token"
-unset BOUTIQUE_PULL_TOKEN
-chmod 600 "$HOME/.config/boutique-secrets/ghcr-read-token"
-~~~
-
-Use the username belonging to that token. The following assumes your
-subhankar12-spec identity. The GitOps repository is public, so the optional
---repo-token-file is omitted:
-
-~~~bash
-cd "$BOUTIQUE_ROOT/boutique-platform"
-python3 scripts/production-lab.py secrets --cluster nonprod \
-  --registry-token-file "$HOME/.config/boutique-secrets/ghcr-read-token" \
-  --registry-user subhankar12-spec
-python3 scripts/production-lab.py secrets --cluster production \
-  --registry-token-file "$HOME/.config/boutique-secrets/ghcr-read-token" \
-  --registry-user subhankar12-spec
-~~~
-
-For a private GitOps repository, also supply a private read-only repo-token
-file. The helper configures Argo repository access separately from image pulls.
-
-It generates independent application session, Redis, PostgreSQL, Grafana and
-fixture-integration credentials. Production's incident queue has its own
-database/user; it does not reuse the orders database.
-
-Existing secrets are preserved. Changing a Kubernetes Secret containing a
-database password does not change the password inside an initialized database.
-Rotation requires updating the data store and clients consistently.
-
-### 15.6 Export Jenkins's restricted verifier identities
-
-~~~bash
-python3 scripts/production-lab.py export-verifier --environment dev --duration 24h
-python3 scripts/production-lab.py export-verifier --environment staging --duration 24h
-python3 scripts/production-lab.py export-verifier --environment production --duration 24h
-~~~
-
-Upload these private files:
-
-| Generated file beneath .state | Jenkins credential |
-| --- | --- |
-| nonprod/jenkins-verifier-dev.json | kubeconfig-dev |
-| nonprod/jenkins-verifier-staging.json | kubeconfig-staging |
-| production/jenkins-verifier-production.json | kubeconfig-production |
-
-The JSON files are valid kubeconfig documents despite their filename extension.
-These accounts can read their application rollout resources and Argo
-Applications. They cannot read Secrets, mutate Deployments or administer
-the cluster. Argo Application reads are scoped to the argocd namespace.
-
-Verify the restriction with the dev identity:
-
-~~~bash
-export BOUTIQUE_DEV_VERIFIER="$BOUTIQUE_ROOT/boutique-platform/local/production-lab/.state/nonprod/jenkins-verifier-dev.json"
-kubectl --kubeconfig "$BOUTIQUE_DEV_VERIFIER" auth can-i get pods -n boutique-dev
-kubectl --kubeconfig "$BOUTIQUE_DEV_VERIFIER" auth can-i get secrets -n boutique-dev
-kubectl --kubeconfig "$BOUTIQUE_DEV_VERIFIER" auth can-i update deployments -n boutique-dev
-~~~
-
-Expected answers are yes, no, no. A denied auth can-i command may return
-nonzero; that is the expected restriction.
-
-Upload nonprod/ca/ca.crt to boutique-ca-dev and boutique-ca-staging, and
-production/ca/ca.crt to boutique-ca-production.
-Never upload either administrative kubeconfig or a CA private key to these
-credentials. Renew and re-upload expiring verifier identities before a build
-session; continuous operation needs automated short-lived identity.
-
-## 16. Build releases and install dev, staging and production
-
-### 16.1 Publish the first four releases
-
-On the **release controller**, run:
-
-~~~text
-boutique-frontend/main
-boutique-catalogue/main
-boutique-cart/main
-boutique-orders/main
-~~~
-
-For each first build, set **DELIVER_TO_DEV=false**.
-You are publishing artifacts first, before asking Jenkins to verify a complete
-application. If initial discovery already published a successful release,
-reuse its build number instead of rebuilding the same immutable source tag.
-
-For each job, record:
-
-| Service | Successful release build number | Image digest | Chart version |
-| --- | --- | --- | --- |
-| frontend | Fill from Jenkins | Fill from release.json | Fill from release.json |
-| catalogue | Fill from Jenkins | Fill from release.json | Fill from release.json |
-| cart | Fill from Jenkins | Fill from release.json | Fill from release.json |
-| orders | Fill from Jenkins | Fill from release.json | Fill from release.json |
-
-The numbers are per-job Jenkins numbers, not commit hashes.
-Inspect the archived release record, signature, chart, SBOM and scan.
-Do not invent a digest, edit a signature or use a placeholder chart version.
-
-### 16.2 Bootstrap dev as a complete application
-
-Open **boutique-bootstrap → Build with Parameters**:
-
-~~~text
-TARGET=dev
-FRONTEND_BUILD=<actual frontend release build number>
-CATALOGUE_BUILD=<actual catalogue release build number>
-CART_BUILD=<actual cart release build number>
-ORDERS_BUILD=<actual orders release build number>
-AUTO_MERGE_DEV=true
-PAUSE_FOR_INITIAL_SYNC=true
-~~~
-
-Leave the four *_EVIDENCE_BUILD fields empty for dev.
-Disable AUTO_MERGE_DEV if you chose manual dev review.
-
-The job collects four signed releases, plans one aggregate GitOps change,
-validates it with the trusted policy job and waits for its guarded merge.
-Inspect the PR's desired images, chart packages and promotion records.
-
-After merge it pauses at **Initialize the first Argo CD synchronization**.
-This pause resolves the first-install ordering problem: the initial Application
-must not synchronize unusable bootstrap values before valid releases exist.
-
-At that pause, on your operator laptop:
-
-~~~bash
-git -C "$BOUTIQUE_ROOT/boutique-gitops" status --short
-# Continue only if the checkout is clean; preserve any local edits first.
-git -C "$BOUTIQUE_ROOT/boutique-gitops" pull --ff-only origin main
-cd "$BOUTIQUE_ROOT/boutique-platform"
-python3 scripts/production-lab.py deploy --cluster nonprod --environment dev
-kubectl --context kind-boutique-nonprod -n argocd get applications
-~~~
-
-Argo reads the **published main branch**, not your filesystem.
-Wait until boutique-dev is Synced/Healthy. If needed, watch:
-
-~~~bash
-kubectl --context kind-boutique-nonprod -n argocd \
-  get application boutique-dev --watch
-~~~
-
-Use Ctrl-C to stop watching; it does not stop Argo.
-Then:
-
-~~~bash
-python3 scripts/production-lab.py readiness --cluster nonprod --environment dev
-python3 scripts/production-lab.py verify --environment dev
-~~~
-
-The readiness helper requires Synced/Healthy when invoked; it can fail if
-called while the first synchronization is still running. Inspect status and
-rerun after the actual issue or wait is resolved.
-
-Open https://dev.boutique.test:8443 and place a test order.
-The automated smoke suite also creates synthetic orders.
-
-Resume the bootstrap input as release-manager.
-It runs four boutique-verify jobs, one for each selected service, and archives
-four signed dev verification records. Record their separate build numbers.
-The operator verify command is useful smoke validation but does not replace
-Jenkins's signed verification evidence.
-
-Do not deploy both nonprod environments at once while staging still has
-bootstrap values. Use the explicit --environment dev selection.
-
-### 16.3 Bootstrap staging from the same releases
-
-Run boutique-bootstrap again:
-
-~~~text
-TARGET=staging
-FRONTEND_BUILD=<same original frontend release build>
-CATALOGUE_BUILD=<same original catalogue release build>
-CART_BUILD=<same original cart release build>
-ORDERS_BUILD=<same original orders release build>
-FRONTEND_EVIDENCE_BUILD=<frontend dev boutique-verify build>
-CATALOGUE_EVIDENCE_BUILD=<catalogue dev boutique-verify build>
-CART_EVIDENCE_BUILD=<cart dev boutique-verify build>
-ORDERS_EVIDENCE_BUILD=<orders dev boutique-verify build>
-AUTO_MERGE_DEV=false
-PAUSE_FOR_INITIAL_SYNC=true
-~~~
-
-Preceding-environment evidence must identify the same image/chart and be no
-older than 24 hours. Reverify if it expires; do not edit timestamps.
-
-Review and merge the staging PR with the separate human CODEOWNER identity.
-At the initial-sync pause:
-
-~~~bash
-git -C "$BOUTIQUE_ROOT/boutique-gitops" pull --ff-only origin main
-cd "$BOUTIQUE_ROOT/boutique-platform"
-python3 scripts/production-lab.py deploy --cluster nonprod --environment staging
-~~~
-
-Wait for boutique-staging to become Synced/Healthy, then:
-
-~~~bash
-python3 scripts/production-lab.py readiness --cluster nonprod --environment staging
-python3 scripts/production-lab.py verify --environment staging
-~~~
-
-Resume Jenkins and retain the four staging verification build numbers.
-Visit https://staging.boutique.test:8443.
-Dev and staging share the nonprod cluster but have different namespaces,
-data, secrets, hostnames and release selections.
-
-### 16.4 Bootstrap production from verified staging
-
-Repeat bootstrap with TARGET=production, the same release build numbers and
-the four **staging** evidence build numbers. Keep AUTO_MERGE_DEV=false and
-PAUSE_FOR_INITIAL_SYNC=true.
-
-Production requires a release-manager input reviewing the planned change,
-evidence and database compatibility, followed by the GitHub CODEOWNER review.
-These are two separate controls.
-
-At the initial-sync pause:
-
-~~~bash
-git -C "$BOUTIQUE_ROOT/boutique-gitops" pull --ff-only origin main
-cd "$BOUTIQUE_ROOT/boutique-platform"
-python3 scripts/production-lab.py deploy --cluster production --environment production
-~~~
-
-Wait for boutique-production to become Synced/Healthy, then:
-
-~~~bash
-python3 scripts/production-lab.py readiness --cluster production --environment production
-python3 scripts/production-lab.py verify --environment production
-~~~
-
-Resume Jenkins and retain the production evidence.
-Visit https://production.boutique.test:9443.
-
-You have now exercised three environment selections, two clusters, immutable
-releases, reviews, policy checks, reconciliation and functional verification.
-You have not demonstrated regional DR, database HA or sustained user load.
-
-### 16.5 Inspect Argo without exposing its administration
-
-Use a loopback port-forward in its own terminal:
-
-~~~bash
-kubectl --context kind-boutique-nonprod -n argocd \
-  port-forward --address 127.0.0.1 service/argocd-server 18081:443
-~~~
-
-Open https://127.0.0.1:18081 for the Argo admin UI. The upstream Argo server
-has its own initial certificate; this is separate from the storefront's
-lab-issued certificate. Handle its trust deliberately; do not disable TLS
-verification in automated release tests.
-
-Retrieve the initial admin credential locally using your operator access and
-the argocd-initial-admin-secret, without recording it in build logs.
-For shared operation, configure SSO/RBAC and remove reliance on bootstrap admin.
-
-In the UI inspect application source revision, rendered resources, sync status,
-health and resource events. The application resource tree is a useful way to
-connect Helm templates with the live Deployments, Services and certificates.
-
-## 17. Perform a routine release and rollback
-
-### 17.1 Choose the repository by the change
-
-| Change | Edit here | Delivery consequence |
-| --- | --- | --- |
-| Cart behavior | boutique-cart application/tests | New cart image and chart release |
-| Cart Pod resources/probes | boutique-cart/helm | New cart chart release through service build |
-| Staging replica/config selection | boutique-gitops/environments/staging | Reviewed environment change |
-| Lab-only PostgreSQL TLS settings | boutique-gitops/lab-profiles | Reviewed lab platform change |
-| Common pipeline rule | boutique-ci | Reviewed library/pipeline update and pin upgrade |
-| AWS subnet/cluster/database setting | boutique-infrastructure | Reviewed Terraform plan/apply |
-| Alert rule/dashboard | Platform source and its GitOps monitoring copy as applicable | Keep rendered runtime configuration consistent |
-
-Do not patch a live Deployment to make a permanent release. Argo's self-heal
-can restore Git's desired state. Use the correct source and review workflow.
-
-### 17.2 Example: release a small cart improvement
-
-1. Create an application branch, make the small change and update meaningful
-   tests where the behavior requires them.
-2. Open a cart PR. Let validation run tests/build/scans on the isolated agent.
-3. Review and merge into protected main.
-4. Release main runs the trusted pipeline with DELIVER_TO_DEV=true.
-5. Inspect the published artifact and dev delivery PR.
-6. The fixed policy check passes and eligible dev change auto-merges.
-7. Argo rolls out the digest; boutique-verify signs fresh dev evidence.
-8. Record the cart release build and dev verification build.
-
-A failed downstream delivery can leave a correctly published release.
-Inspect where it failed; do not assume the immutable image should be rebuilt.
-
-### 17.3 Promote the cart release to staging
-
-Run boutique-promote with the actual values from that release:
-
-~~~text
-TARGET=staging
-SERVICE=cart
-IMAGE=ghcr.io/subhankar12-spec/boutique-cart@sha256:<actual digest>
-RELEASE_BUILD=<original successful cart main release build>
-EVIDENCE_BUILD=<successful dev verification build for this cart release>
-AUTO_MERGE_DEV=false
-~~~
-
-Review/merge its GitOps PR. The job waits for reconciliation, verifies staging
-and produces fresh signed evidence.
-For production, repeat with TARGET=production and the **staging** evidence
-build, including production approval and CODEOWNER review.
-
-Only cart changes here. Frontend, catalogue and orders keep their selected
-releases. Services do not need synchronized version numbers.
-
-### 17.4 Roll back an application release
-
-Use boutique-rollback with the previous known-good release:
-
-~~~text
-TARGET=production
-SERVICE=cart
-IMAGE=<previous fully qualified cart digest>
-RELEASE_BUILD=<original release build that published that previous digest>
-EVIDENCE_BUILD=<previous successful production verification of that digest>
-~~~
-
-Rollback evidence must be from the **same target environment**, match that
-release and satisfy the 30-day age limit. The pipeline prepares a reviewed
-GitOps selection and signs new verification after reconciliation.
-
-Application rollback does not reverse a PostgreSQL migration or restore lost
-data. Review backward compatibility before approval. Use expand/contract
-schema changes if old and new applications must coexist.
-
-Do not use kubectl rollout undo or helm rollback as the normal Argo-managed
-application rollback. A manual change can be overwritten by desired state and
-does not provide the signed review/evidence chain.
-
-### 17.5 Retain recovery evidence
-
-Keep known-good release/chart/evidence artifacts in access-controlled storage
-for at least 35 days, and refresh verification before the 30-day limit.
-Jenkins's current count-based build/artifact retention does not guarantee this
-duration. A busy job can discard an old build sooner.
-
-Archive exact versions, not just a screenshot saying green.
-Read [deployment](runbooks/deployment.md) and [rollback](runbooks/rollback.md)
-for the focused operator procedures.
+## 12. Understand current Jenkins and GitOps delivery
+
+Read [Jenkins setup](jenkins-setup.md) for controller/library/credentials and
+[the deployment sequence](deploy-cicd-kind.md) for exact UI fields and commands.
+Service Jenkinsfiles call `servicePipeline`; the shared library owns quality
+and publication stages. `seed-release.Jenkinsfile` calls Job DSL to create jobs.
+Job DSL creates jobs, while Pipeline DSL describes what their builds do.
+
+The seed uses the reviewed CI commit. Main builds use protected service source.
+Publishing occurs only after Dockerfile tests, source/image scans and Helm
+validation pass. Image digests identify immutable registry content; source-SHA
+chart versions and packages identify exactly what Argo renders. Build artifacts
+preserve scan/SBOM and source information. No custom signature files are needed.
+
+Jenkins opens a GitOps PR and stops. Jenkins checks validate Helm/manifests with
+read-only repository access. Independent human review is the approval boundary.
+Argo deploys merged desired state. Rollout and functional smoke tests happen
+separately; an image in Git does not prove that environment successfully ran it.
+
+## 13. Migrate an existing Jenkins setup
+
+1. Preserve the home volume and connected rootless build agent.
+2. Update the CI/GitOps/platform checkouts without discarding local changes.
+3. Review and pin the simplified CI commit as the untrusted shared-library version.
+4. Use the Pipeline seed with the same reviewed commit and automatic builds suppressed.
+5. Disable old Freestyle seeds, boutique-bootstrap and boutique-gitops-check;
+   the seed preserves unrelated/old jobs instead of silently deleting them.
+6. Remove the old required boutique/gitops-policy status from GitHub rules and
+   require boutique/gitops-validation after the first Jenkins check has run.
+7. After old builds finish, remove four release signing/public key credentials;
+   retain publishing credentials and gitops-checks for manifest statuses.
+8. Review bot/reviewer identities before enabling required review. Self-approval
+   cannot satisfy independent production approval.
+
+## 14. First deployment versus routine release
+
+First deployment needs a complete selection of all four services. Publish each
+and merge its dev selection before initial Argo sync. App secrets/data and
+controllers must exist. No special aggregate bootstrap job is needed.
+A routine release changes one service and preserves the others. Promote the same
+image/chart from dev to staging, then staging to production, after confirming
+the preceding environment passed rollout/smoke checks. Never rebuild for prod.
+
+## 15. Environment separation
+
+The laptop registry profile is dev-only with local persistent PostgreSQL/Redis.
+Dev/staging can share a nonproduction cluster with separate namespaces, secrets
+and data. Production belongs on a separate cluster/account and managed/HA data.
+The existing kindnet cluster does not enforce NetworkPolicy. On a larger host,
+the optional two-cluster exercise adds policy-capable CNI and TLS, but single
+control-plane/data replicas still do not prove high availability.
+
+## 16. Verification and recovery
+
+Inspect Argo synchronized revision and Deployment readiness, then run the full
+functional smoke suite. The optional boutique-verify job uses scoped read-only
+kubeconfigs and public TLS CA files. It archives operational reports; it does
+not sign them or require another deployment agent to wait for it.
+Rollback opens a PR restoring a service's known-good digest/chart from protected
+Git history. Review migration compatibility. Database corruption requires data
+restore, not only reverting an image. Keep off-host backups and measure restore
+time/data loss against the documented RTO/RPO.
+
+## 17. Why some production work remains
+
+Local validation cannot prove GHCR rights, live GitHub branch protection,
+application rollout, real Slack delivery or recovery time. Configure and execute
+those checks on the target host. Use production secrets/permissions, HA and
+network boundaries appropriate to the environment rather than inferring them
+from a namespace or a green schema check.
+
+> Monitoring note: Kubernetes now defaults to Slack-only routing. The ServiceNow
+> worker/queue instructions in this chapter are optional and require
+> `incidentBridge.enabled=true`; they are not deployment prerequisites.
 
 ## 18. Install and understand monitoring
 
@@ -2314,7 +1237,7 @@ dev and staging; production monitoring expects production.
 
 1. Run boutique-platform/main on the release controller. Its shared service
    pipeline builds **incident-bridge**, including real PostgreSQL integration.
-2. Inspect the successful signed release and capture the image digest.
+2. Inspect the successful published release and capture the image digest.
 3. Open a reviewed GitOps PR changing the adapter image values in
    monitoring/profiles/nonprod/values.yaml and
    monitoring/profiles/production/values.yaml.
@@ -2648,7 +1571,7 @@ Read [SLO definitions and queries](slo.md).
 
 | Scope | Intended RTO | Intended RPO | Important condition |
 | --- | --- | --- | --- |
-| Compatible application rollback | 30 minutes | Zero committed DB writes | Retained signed prior artifacts/evidence |
+| Compatible application rollback | 30 minutes | Zero committed DB writes | Retained image/chart versions and prior rollout reports |
 | Laptop/VM local data loss | 4 hours | 24 hours | Daily consistent encrypted off-host backups |
 | AWS orders or dedicated queue PITR | 60 minutes | 15 minutes | Actual latest-restorable-time and verified restore/cutover |
 | Redis carts | 60 minutes | 24 hours | Valid snapshot/persistence restore and matching credentials |
@@ -2752,401 +1675,56 @@ Use [recovery exercise template](runbooks/recovery-exercise.md),
 [disaster recovery](runbooks/disaster-recovery.md).
 There is no deployed secondary region/account or automatic regional failover.
 
-## 21. Troubleshoot by following the dependency chain
-
-Start at the layer producing the error. Rebuilding everything hides the cause.
-Preserve logs/state and inspect the exact environment.
-
-### 21.1 Quick symptom-to-layer map
-
-| Symptom | First checks |
-| --- | --- |
-| Browser cannot reach app | Port-forward/ingress, correct port, hosts entry, TLS trust |
-| Frontend loads but API fails | Frontend logs, backend Service/endpoints, dependency readiness |
-| Pod Pending | Events, capacity, requests, PVC and node placement |
-| PVC Pending | StorageClass/provisioner, node/storage events |
-| ImagePullBackOff | Actual image, GHCR pull credentials/package scope, architecture |
-| CrashLoopBackOff | Current and previous logs, config/secret consistency, data TLS |
-| Jenkins waiting for executor | Correct label online, distinct policy executor |
-| GitOps PR will not merge | Protection, exact status context, current-head check, reviewer |
-| Argo OutOfSync/Degraded | Source revision, conditions, rendered resources, repo access |
-| Smoke rejects origin | PUBLIC_ORIGIN and exact URL/proxy configuration |
-| TLS verification fails | Hostname, correct cluster CA, issuance and expiry |
-| ServiceNow queue grows | Receiver credentials/ACLs/network, DB health, workers/dead letters |
-
-### 21.2 Inspect a Kubernetes workload in order
-
-For dev in the full lab:
-
-~~~bash
-kubectl --context kind-boutique-nonprod -n boutique-dev get deployments,pods,services
-kubectl --context kind-boutique-nonprod -n boutique-dev get pvc
-kubectl --context kind-boutique-nonprod -n boutique-dev get events \
-  --sort-by=.metadata.creationTimestamp
-kubectl --context kind-boutique-nonprod -n boutique-dev describe deployment/cart
-kubectl --context kind-boutique-nonprod -n boutique-dev logs deployment/cart --tail=100
-kubectl --context kind-boutique-nonprod -n boutique-dev \
-  get endpointslices -l kubernetes.io/service-name=cart
-~~~
-
-For a crashing Pod, substitute its real name:
-
-~~~bash
-kubectl --context kind-boutique-nonprod -n boutique-dev \
-  logs ACTUAL_POD_NAME --previous --tail=100
-~~~
-
-For the single-kind exercise, replace the context with your chosen
-BOUTIQUE_KIND_CONTEXT. The full-lab helper is not the troubleshooting entry
-point for an unrelated existing cluster.
-
-Do not dump all Secrets or environment variables into a public bug report.
-Report object names, status/events and redacted errors.
-
-### 21.3 Image and bootstrap problems
-
-- An image containing bootstrap or local in the full lab means the signed
-  release selection was not completed or you chose the wrong profile.
-- Locally built images must be loaded into the **chosen** kind cluster for
-  the single-cluster exercise. Loading a different cluster has no effect.
-- Public source repositories do not make GHCR packages public automatically.
-  Check package visibility and namespace ghcr-pull credentials.
-- The runtime is Linux amd64. An incompatible platform image can produce
-  exec-format errors.
-- The signed verifier currently expects the supported single-platform digest
-  flow. OCI multi-platform index digests and running platform digests need a
-  reviewed verifier change before using a different publication model.
-
-The full lab intentionally rejects fake/mutable images before creating Argo
-Applications. Fix release publication/promotion; do not remove that check.
-
-### 21.4 Database and TLS problems
-
-Check whether the failing dependency is orders PostgreSQL, Redis or the
-separate incident queue. They have different credentials and trust.
-
-An initialized database still has its original password even if a Secret was
-changed. Restore matching credentials or perform deliberate coordinated rotation.
-Do not delete its volume as a password-reset shortcut.
-
-For the full lab, inspect certificate state:
-
-~~~bash
-kubectl --context kind-boutique-nonprod -n boutique-dev get certificates
-kubectl --context kind-boutique-nonprod -n boutique-dev get certificaterequests
-kubectl --context kind-boutique-nonprod -n boutique-dev get ingress
-~~~
-
-Check readiness/events before an application stack trace. A leaf certificate
-may not yet be issued, or its hostname/CA may be wrong.
-PostgreSQL connections require verified trust and hostname, not just encryption.
-
-Do not disable origin checks, probes, network policy or certificate verification
-to make an acceptance test pass.
-
-### 21.5 Jenkins problems
-
-| Failure | Likely cause and next action |
-| --- | --- |
-| There are no nodes with label ... | Create/connect the expected label on the correct controller |
-| Docker daemon unavailable | Agent process did not inherit correct rootless DOCKER_HOST |
-| Bind-mounted fixture missing | Container agent and daemon do not share the same absolute workspace path |
-| Child policy job never starts | Parent occupies the only matching executor |
-| Signature verification fails | Wrong key pair, changed record, unsupported schema or expired evidence |
-| Release tag already exists | Source was already published; reuse its original successful build |
-| GitHub protection check fails | Missing required setting or bot lacks metadata read permission |
-| Staging/prod review impossible | PR author and reviewer are the same identity |
-| Cluster authentication expired | Renew/re-upload scoped verifier kubeconfig |
-| Storefront unreachable from agent | VM/container loopback or missing hosts/private routing |
-
-A release controller's private credentials must not be “temporarily” copied to
-validation as a workaround. Fix the trust/routing/job configuration.
-
-If source/main changes while a policy check is running, its stale evaluation
-must fail. Run a fresh check for the current PR head/base.
-
-### 21.6 Argo problems
-
-~~~bash
-kubectl --context kind-boutique-nonprod -n argocd get application boutique-dev
-kubectl --context kind-boutique-nonprod -n argocd describe application boutique-dev
-kubectl --context kind-boutique-nonprod -n argocd get pods
-~~~
-
-Inspect the configured repository/path/valueFiles/revision. For the full lab
-they must include the lab values, not only cloud defaults.
-Argo fetches remote main; an unpushed local commit is invisible.
-The application charts are vendored in GitOps, so Argo does not need to
-rebuild service code or fetch a mutable development checkout.
-
-Network-policy discovery Roles need the correct namespaces; the lab monitoring
-AppProject permits its reviewed application discovery namespaces.
-Do not grant blanket cluster-admin to get around a missing scoped permission.
-
-### 21.7 Monitoring and incident problems
-
-Start with Prometheus Targets. A down scrape can be a network failure even when
-the application is serving. A missing scrape series requires a missing-target
-rule, not just an up == 0 comparison.
-
-For a growing queue, inspect DB connectivity, queue age, dead letters,
-per-worker heartbeat/scrape, receiver HTTP failures and ServiceNow instance
-availability. Developer instances can sleep.
-
-Fix credentials/ACLs/dependency first; pending retries resume automatically.
-Dead letters need the adapter's authenticated recovery workflow documented in
-its README. Removing the queue erases data and hides the failure.
-
-## 22. Stop safely and resume later
-
-### 22.1 Stop port-forwards, watches and log capture
-
-Ctrl-C stops the foreground kubectl port-forward/watch or log-follow process.
-It does not delete Pods, clusters or stored data.
-
-### 22.2 Stop Compose while keeping data
-
-For the Compose app plus monitoring:
-
-~~~bash
-cd "$BOUTIQUE_ROOT/boutique-platform"
-docker compose --env-file local/.env \
-  -f local/compose.yaml -f monitoring/compose.yaml down
-~~~
-
-For Jenkins:
-
-~~~bash
-cd "$BOUTIQUE_ROOT/boutique-ci/jenkins"
-docker compose down
-~~~
-
-**Do not add -v** if you want to preserve named volumes.
-Keep generated .env files, secrets and signing keys as well.
-Restart using the same startup commands and matching files.
-
-Keep native build-agent daemons/VMs and tunnels under your chosen lifecycle
-management; stopping a controller does not automatically stop its remote VMs.
-Dispose of untrusted validation agents after their builds.
-
-### 22.3 Preserve kind state
-
-Kind does not provide a complete durable “pause the production environment”
-operation. Rebooting Docker/your laptop can interrupt clusters and exposes
-real restart/recovery behavior. After restart, check nodes, controller health,
-PVCs, certificates and functional verification.
-
-**Deleting a kind cluster deletes its node containers and their local data.**
-For an intentionally disposable introductory cluster only:
-
-~~~bash
-# Destructive: use only after deciding this named cluster and data are disposable.
-kind delete cluster --name boutique-learning
-~~~
-
-Do not copy that name if your chosen cluster has a different purpose.
-For the full lab, use the [teardown runbook](runbooks/teardown.md) after backing
-up state and deciding which data/trust must survive.
-
-Do not run global Docker volume pruning as a routine cleanup step.
-Do not delete namespaces/PVCs to fix a bad application release.
-Argo pruning can delete resources removed from desired state, so review
-resource deletion in GitOps PRs as carefully as image changes.
-
-### 22.4 Restore your terminal context deliberately
-
-A new shell does not remember BOUTIQUE_ROOT, PATH or KUBECONFIG exports.
-For the full lab:
-
-~~~bash
-export BOUTIQUE_ROOT="$HOME/devops-boutique"
-export PATH="$BOUTIQUE_ROOT/boutique-platform/.tools:$PATH"
-export BOUTIQUE_NONPROD_KUBECONFIG="$BOUTIQUE_ROOT/boutique-platform/local/production-lab/.state/nonprod/kubeconfig"
-export BOUTIQUE_PRODUCTION_KUBECONFIG="$BOUTIQUE_ROOT/boutique-platform/local/production-lab/.state/production/kubeconfig"
-export KUBECONFIG="$BOUTIQUE_NONPROD_KUBECONFIG:$BOUTIQUE_PRODUCTION_KUBECONFIG"
-kubectl config get-contexts
-~~~
-
-For the introductory cluster, export its dedicated operator kubeconfig from
-chapter 9 instead. Store a reviewed non-secret shell helper privately if useful;
-do not include tokens/passwords in shell startup files.
-
-## 23. Know what is implemented and what remains
-
-The project is substantial source/configuration, not a certificate that it is
-ready to serve paying customers.
-
-| Capability | Present in source | What you must still configure/prove |
-| --- | --- | --- |
-| Four-language application | Frontend, catalogue, cart, orders and data flow | Actual host startup and intended load |
-| Introductory runtime | Compose/local kind scripts and Helm profiles | Your Docker/kind/storage compatibility |
-| Shared Jenkins build | Tests, scans, SBOM, chart publication, signed release | Agents, scoped credentials, actual protected-main run |
-| Environment delivery | Bootstrap/promote/verify/rollback and locks | Protection, reviewer, controller origins and live chain |
-| GitOps policy | Fixed trusted evaluation and chart/image provenance | Required status wiring for manual/automated PRs |
-| Full kind foundations | Locked two-cluster controllers, TLS, Calico | Supported host and successful complete bootstrap |
-| Runtime acceptance | Functional smoke, TLS/readiness, scoped verifier | Live results on your clusters |
-| Monitoring | Dashboard, rules, logs, routing, durable incident adapter | Published bridge digest and live component health |
-| Slack/ServiceNow | Secret-driven receiver preparation and lifecycle reference | Real webhook/instance/server-side endpoint and approved delivery test |
-| SLOs | Definitions, queries and error-budget policy | Complete retention, continuous probes/reporting and measured objective |
-| Local recovery | Logical backup and isolated restore helpers/runbooks | Scheduling, off-host encrypted storage and measured full recovery |
-| AWS infrastructure | VPC/EKS/data/identity/logging/audit/reference modules | Account inputs, approved paid apply and controller bootstrap |
-| Regional disaster recovery | Limitations and recovery planning | Independent backups/region/account, access and measured failover |
-
-Important remaining gaps include backup automation, independent state/secret
-protection, controller/monitoring HA, external paging/dead-man detection,
-organizational SSO, verified storage drivers and full live recovery acceptance.
-The unused GitOps multibranch entry is not a replacement for its fixed policy
-job.
-
-Source publication, code tests, Helm rendering, schema checks and isolated
-runtime exercises establish specific properties. They do not prove the full
-Jenkins → GHCR → GitOps → Argo → HTTPS sequence has run on your laptop.
-Read [validation and limitations](validation.md) when assessing evidence.
-
-## 24. Follow a practical learning sequence
-
-Treat these as learning sessions with exit checks rather than a deadline:
-
-| Session | Do | You can move on when... |
-| --- | --- | --- |
-| 1: Workspace/tools | Clone repositories, install prerequisites and run doctor | Source/tooling/host are ready |
-| 2: Foundations | Two-cluster bootstrap, CA, Calico and Argo | Clusters/controllers are healthy; no manual app deployment |
-| 3: Jenkins/access | Controllers, isolated agents, credentials, protection and seeds | Required agents/identities are ready and validation cannot publish/deploy |
-| 4: Releases | Jenkins builds/tests/publishes four signed releases | You can trace commit → image digest → chart → signed record |
-| 5: Dev delivery | Bootstrap GitOps, connect Argo at the initial pause, resume verification | The first app deployment has signed dev evidence |
-| 6: Promotion | Bootstrap staging/production with the same artifacts and preceding evidence | Each environment has successful signed verification |
-| 7: Helm/runtime | Inspect selected charts, rendered objects, Pods, Services and PVCs | You can explain environment configuration and reconciliation |
-| 8: Change/recover | Small service release, promotion, rollback | You can explain build-once promotion and schema constraints |
-| 9: Observe/respond | Dashboard, alerts, fixtures, queue recovery | You can diagnose app failure versus notification failure |
-| 10: Recovery | Backup, isolated restore, measured exercise | You have evidence of what was recovered and what remains unproven |
-| 11: AWS | Read modules, validate roots, review architecture/cost | You can explain private access, state, IRSA/ESO and audit |
-
-Compose and the manual single-kind deployment remain optional practice/debugging
-exercises. They are not prerequisites for sessions 1–6.
-
-Keep a short lab journal: what changed, exact versions, what failed, how you
-proved the fix and what you still do not know. Explaining a failed rollout
-accurately teaches more than repeatedly deploying an unchanged green stack.
-
-Before calling your deployed lab complete, check:
-
-- App browse/cart/checkout and ownership/idempotency tests pass.
-- Chosen profiles match the runtime; full lab uses only approved digests.
-- Production has its own cluster/context and credentials.
-- Validation cannot access release/deploy identities.
-- Protected main and CODEOWNER/status requirements actually block an invalid PR.
-- One approved service release completes dev → staging → production.
-- A compatible rollback completes with fresh signed verification.
-- Prometheus sees each replica; Grafana/logs show the correct environment.
-- Mock alert firing/resolution and durable retries are demonstrated.
-- An isolated restore matches known data and records observed RTO/RPO.
-- Runtime secrets, keys and data have independent recoverable protection.
-- Remaining gaps are recorded rather than described as already solved.
-
-## 25. Glossary and command reference
-
-### 25.1 Glossary
-
-| Word | Meaning in this project |
-| --- | --- |
-| Repository | Independently versioned source/configuration project |
-| Monorepo | Multiple components in one Git repository; this project instead uses eight repositories |
-| Workspace | The parent folder holding those eight sibling checkouts |
-| Microservice | Small independently built/deployed application component |
-| API gateway | Frontend server routing browser API requests to backend services |
-| Image | Packaged runtime filesystem/process definition |
-| Container | Running instance of an image |
-| Registry | Storage/distribution service for images and OCI chart packages |
-| GHCR | GitHub Container Registry |
-| Digest | Content-addressed identifier, used to select immutable artifacts |
-| SBOM | Software bill of materials: inventory of package components |
-| Attestation | Signed record binding claims to a particular artifact |
-| Pod | Kubernetes's smallest scheduled runtime unit |
-| Deployment | Controller managing application replicas and rolling updates |
-| StatefulSet | Controller with stable identity/storage for stateful processes |
-| Service | Stable network endpoint selecting matching Pods |
-| Ingress | Rules routing external HTTP/HTTPS to Services |
-| CNI | Cluster networking implementation; Calico enforces the full lab's policies |
-| NetworkPolicy | Rules restricting Pod ingress/egress when the CNI enforces them |
-| PVC | Request for persistent storage |
-| StorageClass | Provisioning/storage policy for PVCs |
-| ConfigMap | Non-secret Kubernetes configuration |
-| Secret | Kubernetes secret-data object; base64 encoding alone is not encryption |
-| Service account | Kubernetes workload identity |
-| RBAC | Rules deciding which API resources an identity can access |
-| Kubeconfig | Cluster connection/trust/identity/context document |
-| Helm chart | Templates plus values/schema used to generate Kubernetes resources |
-| GitOps | Reviewed Git desired state reconciled into the runtime |
-| Argo Application | Object telling Argo which repository/path/revision to reconcile |
-| Reconcile | Continuously bring actual state toward desired state |
-| Drift | Actual state differs from desired configuration |
-| Promotion | Select the already-built release for another environment |
-| Rollback | Select a known-good earlier release, accounting for data compatibility |
-| Probe | Health check controlling readiness/restart behavior |
-| PDB | PodDisruptionBudget limiting voluntary disruption; not protection from all failures |
-| TLS / CA | Encrypted authenticated connection / certificate authority establishing trust |
-| Terraform root/module | Applied configuration boundary / reusable directory of Terraform configuration |
-| State lock | Prevents concurrent conflicting Terraform state writes |
-| Availability zone | AWS isolation boundary inside one region |
-| Multi-AZ | Availability design across zones, distinct from cross-region DR |
-| IRSA | AWS workload-role authentication using EKS service-account identity |
-| ESO | Controller synchronizing external secrets into Kubernetes Secrets |
-| CSI | Driver interface for storage/mount integration; specify which driver you mean |
-| Dead letter | Durable item that exhausted retry attempts and needs recovery |
-| Tombstone | Retained lifecycle record preventing replay from reopening completed work |
-| SLI/SLO | Measured reliability indicator / target for it |
-| RTO/RPO | Time-to-recover objective / accepted committed-data-loss objective |
-
-### 25.2 Read-only command reference
-
-Commands below inspect the **full lab dev** environment. Export its kubeconfig
-as in chapter 15 first. Adapt contexts deliberately for another deployment.
-
-~~~bash
-# What contexts are available?
-kubectl config get-contexts
-
-# Are the nonprod nodes ready?
-kubectl --context kind-boutique-nonprod get nodes
-
-# What runs in dev?
-kubectl --context kind-boutique-nonprod -n boutique-dev get deployments,pods,services,pvc
-
-# What images are selected in Deployments?
-kubectl --context kind-boutique-nonprod -n boutique-dev get deployments \
-  -o 'jsonpath={range .items[*]}{.metadata.name}{"\t"}{.spec.template.spec.containers[*].image}{"\n"}{end}'
-
-# Is Argo healthy and synchronized?
-kubectl --context kind-boutique-nonprod -n argocd get applications
-
-# What happened most recently?
-kubectl --context kind-boutique-nonprod -n boutique-dev get events \
-  --sort-by=.metadata.creationTimestamp
-
-# What is this application's desired configuration?
-python3 "$BOUTIQUE_ROOT/boutique-gitops/scripts/render.py" dev --profile lab \
-  > /tmp/boutique-dev-inspection.yaml
-
-# Is my checkout clean and which commit am I reading?
-git -C "$BOUTIQUE_ROOT/boutique-platform" status --short
-git -C "$BOUTIQUE_ROOT/boutique-platform" log -1 --oneline
-~~~
-
-### 25.3 Where to read next
-
-| Question | Focused document |
-| --- | --- |
-| How do all components fit together? | [Architecture](architecture.md) |
-| How does the full kind runtime work? | [Production lab](production-lab.md) |
-| How do I operate Jenkins? | [Jenkins setup](jenkins-setup.md) |
-| How do charts and digests reach GitOps? | [Helm delivery](https://github.com/subhankar12-spec/boutique-gitops/blob/main/docs/helm-delivery.md) |
-| How do I handle an incident? | [Incident response](runbooks/incident-response.md) |
-| How do I recover data/controllers? | [Backup/restore](runbooks/backup-restore.md), [Jenkins recovery](runbooks/jenkins-recovery.md) |
-| What are our intended reliability targets? | [SLOs](slo.md), [recovery targets](recovery-targets.md) |
-| Which checks actually ran? | [Validation](validation.md) |
-| What paid cloud work is separate? | [Infrastructure](https://github.com/subhankar12-spec/boutique-infrastructure/blob/main/README.md) |
-
-When you are lost among the files, start with the action you want to perform:
-application behavior, artifact build, environment selection, infrastructure
-change or incident response. Find that repository in chapter 4, follow its
-inputs and outputs, and inspect the rendered/live result at the next boundary.
+## 21. Troubleshoot in dependency order
+
+Agent offline: inspect its Remoting logs, WebSocket controller URL and secret
+file argument. Docker access failure: confirm the agent UID, socket owner and
+rootless daemon. Do not grant the rootful docker group to solve it.
+
+Build fails: inspect the first failed stage; distinguish tests, fixable scan
+findings, tool/download access and registry permissions. Do not disable a gate
+to force a green result. Existing commit tags cannot be overwritten.
+
+GitOps PR fails: inspect boutique/gitops-validation. Check dependency package/version,
+image selections, namespaces and resource kinds. Old boutique/gitops-policy
+requirements must be migrated rather than waiting for a removed job.
+
+ImagePullBackOff: confirm a real digest exists and GHCR visibility/pull secrets.
+Pending data pods: inspect PVC/storage. CrashLoopBackOff: inspect previous logs
+and Secret names; do not reset passwords while retaining existing databases.
+
+Argo OutOfSync: inspect diff and source profile; an initial laptop Application
+needs manual sync. Running pods with failing readiness: inspect internal service
+URLs, Redis/database credentials and Flyway migrations. A wrong origin/port
+causes mutation requests to fail. Laptop CI/CD uses http://localhost:8088.
+
+## 22. Stop and resume safely
+
+Stop port-forward with Ctrl+C. Preserve Jenkins home, rootless Docker data,
+cluster containers, app PVCs and private credentials. Do not use volume deletion
+as a troubleshooting shortcut. On resume, check the existing cluster/context,
+agent, Argo state and app smoke test before making another release.
+
+## 23. Validation and limits
+
+[validation.md](validation.md) separates executed configuration/controller checks
+from live acceptance. AWS and external integrations need actual deployment.
+[SLOs](slo.md), [recovery targets](recovery-targets.md) and the
+[DR runbook](runbooks/disaster-recovery.md) remain targets until measured.
+
+## 24. Recommended execution order
+
+Existing cluster/agent → reviewed library and credentials → Pipeline seed →
+four publishing builds → reviewed GitOps selections → app secrets → initial
+Argo sync → smoke → routine release/promotion → monitoring → rollback/restore.
+
+## 25. Glossary
+
+**Pipeline:** build workflow stored as a Jenkinsfile. **Shared library:** reusable
+Groovy/Pipeline logic. **Job DSL:** version-controlled job configuration.
+**Seed:** job executing Job DSL. **Digest:** immutable image content identifier.
+**Helm chart:** Kubernetes templates/defaults/schema. **Values:** environment
+settings. **GitOps:** Git as reviewed desired state. **Argo sync:** reconciliation
+of that state into Kubernetes. **SLO:** reliability objective. **RTO:** target
+recovery time. **RPO:** acceptable data-loss window. **IRSA:** AWS IAM permissions
+for Kubernetes service accounts. **ESO:** sync from external secret storage.

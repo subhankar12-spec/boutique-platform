@@ -54,6 +54,11 @@ class ProductionLabSafety(unittest.TestCase):
                 lab.deploy(cluster,monitoring=True)
                 self.assertEqual(render.call_args.args[0],['python3',lab.GITOPS/'scripts/render-monitoring.py',cluster,'--lab'])
 
+    def test_default_monitoring_needs_no_incident_image(self):
+        self.assertEqual(lab.validate_release_images('image: prom/prometheus@sha256:' + 'a'*64, monitoring=True), [])
+        with self.assertRaises(ValueError):
+            lab.validate_release_images('image: ghcr.io/subhankar12-spec/boutique-incident-bridge:latest', monitoring=True)
+
     def test_private_credentials_reject_readable_files_and_symlinks(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / 'token'; path.write_text('test-token'); path.chmod(0o644)

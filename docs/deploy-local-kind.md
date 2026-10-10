@@ -13,7 +13,7 @@ If a command fails, stop at that step and use the troubleshooting table below.
 
 This exercise uses locally built images and the local Helm values.
 It is independent of the CI/CD-first workflow; completing it is not required
-before configuring Jenkins or starting the signed delivery lab.
+before configuring Jenkins or starting the GitOps delivery path.
 
 The work you will do is:
 
@@ -248,7 +248,7 @@ docker compose --env-file local/.env -f local/compose.yaml down
 ~~~
 
 If you started Compose monitoring too, use the combined stop command in
-[the full guide](beginner-guide.md#222-stop-compose-while-keeping-data).
+[the full guide](beginner-guide.md#22-stop-and-resume-safely).
 Do not add -v.
 
 In your current terminal:
@@ -311,14 +311,14 @@ database PVCs or generate new database passwords as a troubleshooting shortcut.
 
 This is the first Kubernetes milestone. Next, follow the full guide in this order:
 
-1. [Jenkins architecture and stages](beginner-guide.md#12-understand-the-jenkins-delivery-architecture).
-2. [Controllers and agents](beginner-guide.md#13-configure-jenkins-controllers-and-agents).
-3. [Credentials and branch protection](beginner-guide.md#14-configure-delivery-credentials-and-github-protection).
-4. [Two-cluster foundations](beginner-guide.md#15-bootstrap-the-two-cluster-production-learning-lab).
-5. [First signed dev/staging/production releases](beginner-guide.md#16-build-releases-and-install-dev-staging-and-production).
+1. [Jenkins architecture and stages](beginner-guide.md#12-understand-current-jenkins-and-gitops-delivery).
+2. [Controllers and agents](jenkins-setup.md).
+3. [Credentials and branch protection](deploy-cicd-kind.md#4-configure-the-shared-library-and-credentials).
+4. [Two-cluster foundations](production-lab.md).
+5. [First dev deployment and promotion](deploy-cicd-kind.md#6-build-and-publish-the-four-services).
 6. [Monitoring](beginner-guide.md#18-install-and-understand-monitoring).
 
-Those steps use different clusters and signed registry releases. Keep the local
+Those steps use different clusters and immutable registry releases. Keep the local
 image exercise and the production delivery workflow distinct.
 
 Ctrl-C stops the port-forward when you finish; the app keeps running in kind.

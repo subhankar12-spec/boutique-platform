@@ -10,12 +10,12 @@ These are initial planning targets, not guarantees or achieved measurements. The
 
 | Scope | RTO target | RPO target | Required recovery source | Current status |
 | --- | --- | --- | --- | --- |
-| Bad application release, schema still compatible | 30 minutes | 0 committed DB writes lost by application-only rollback | Retained signed image/chart release and same-environment verification | Reviewed rollback implemented; live end-to-end exercise pending |
+| Bad application release, schema still compatible | 30 minutes | 0 committed DB writes lost by application-only rollback | Retained image/chart versions, Git history and prior rollout reports | Reviewed rollback implemented; live end-to-end exercise pending |
 | Laptop/cloud-VM loss, local application and queue databases | 4 hours | 24 hours | Daily consistent encrypted backups on a separate failure domain; configuration and matching secrets | Local logical backup/restore helpers exist; scheduling/off-host storage and full-host drill pending |
 | AWS orders PostgreSQL data restore in the same region | 60 minutes | 15 minutes | RDS automated backups/PITR and accessible KMS/IAM/secrets | Production retention 14 days, nonprod 3 days configured; AWS deployment/restore/cutover untested |
 | AWS dedicated incident-queue PostgreSQL restore | 60 minutes | 15 minutes | Complete queue PITR, including pending rows and deduplication tombstones | Production retention 35 days, nonprod 7 days when enabled; restore/replay untested |
 | Redis cart data | 60 minutes | 24 hours | Snapshot/AOF as applicable, matching credentials and validated restore | AWS snapshot retention 7 days production/1 day nonprod; off-host local restore untested |
-| Jenkins controllers and delivery artifacts | 4 hours | 24 hours for history/config; preserve every accepted release needed for rollback | Separate encrypted controller backups plus signed release/evidence artifacts, plugins and signing keys | Recovery runbook exists; backup automation and controller restore drill pending |
+| Jenkins controller and delivery artifacts | 4 hours | 24 hours for history/config; preserve every accepted release needed for rollback | Encrypted controller backups, published image/chart artifacts, plugins and original credential encryption material | Recovery runbook exists; backup automation and controller restore drill pending |
 | Metrics/logs/Grafana/Alertmanager state | 60 minutes | 24 hours for retained history/silences | Git-provisioned configuration plus encrypted durable state backups | Configuration reproducible; state backup/restore untested; incident queue uses its own stricter targets |
 | Primary cluster rebuilt around recoverable managed data | 4 hours | Data-store targets above | Reviewed Terraform/Helm/GitOps, registry packages, state, secrets and platform trust | Code/runbooks available; complete environment rebuild untested |
 
@@ -23,7 +23,7 @@ The 15-minute AWS RPO is a target to verify using each database's **latest resto
 
 A local 24-hour RPO requires successful daily off-host backups. The current manual scripts do not satisfy that schedule by themselves. Cart loss is accepted within its target for this learning app; restoring the original session signing key matters because anonymous users otherwise lose access to their existing sessions/order history. Choose a stricter cart target before treating carts as durable business records.
 
-Git and registry recovery require the exact reviewed commits, signed records and package/image digests; keep credentials and signing keys out of Git. Retain known-good release/evidence artifacts in access-controlled storage for at least 35 days and refresh verification before its 30-day rollback age limit. Count-based Jenkins build retention alone can delete required artifacts sooner; configure and verify retention separately. Back up keys/secrets after each controlled change and controller state at least daily to meet these intended targets.
+Git and registry recovery require the exact reviewed commits and package/image digests; keep credentials and private TLS/session keys out of Git. Retain known-good image/chart versions and rollout reports for at least 35 days; rerun verification after recovery. Count-based Jenkins build retention alone can delete required artifacts sooner; configure and verify retention separately. Back up keys/secrets after each controlled change and controller state at least daily to meet these intended targets.
 
 ## What disaster recovery currently covers
 
@@ -41,7 +41,7 @@ Regional/account-loss recovery needs a separately reviewed backup location, repl
 | --- | --- | --- |
 | Orders and queue databases | Daily consistent encrypted off-host local backups; AWS PITR with configured retention and independent export/replication if region loss is in scope | Monthly isolated restore and after schema/backup changes |
 | Redis | Daily consistent snapshot or reviewed persistence backup; encrypt independent copies | Monthly representative cart restore |
-| Jenkins, signing/session keys and credentials | Separate encrypted controller backups; secure key/secret export after changes; preserve release artifacts | Quarterly isolated controller recovery and after core/plugin changes |
+| Jenkins, TLS/session keys and credentials | Separate encrypted controller backups; secure key/secret export after changes; preserve release artifacts | Quarterly isolated controller recovery and after core/plugin changes |
 | Terraform state, source and GitOps | Versioned restricted backend; off-host exact commits/refs and documented access recovery | Quarterly environment reconstruction |
 | Monitoring state | Consistent backups of queue, Grafana storage and silences; retain metrics/logs as policy requires | Quarterly restore/replay exercise |
 

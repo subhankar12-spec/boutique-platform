@@ -1,5 +1,14 @@
-# Jenkins Recovery
+# Jenkins recovery
 
-Back up each Jenkins home volume separately to encrypted access-controlled storage. Treat credential material and controller identity keys as sensitive. Restore to isolated controllers with the matching core/plugin lock, disable triggers, confirm job/config integrity, then re-enable agents and trusted credentials deliberately. Never restore release credentials onto the validation controller.
+Back up the controller home to encrypted access-controlled off-host storage,
+including original Jenkins credential encryption material and identity keys.
+Retain accepted image/chart artifacts and exact source/config revisions.
+Restore with matching core/plugins on an isolated host, with triggers/agents
+disabled. Confirm job/library pins, credential scopes and approvals before
+reconnecting reviewed-code workers. Never expose credentials to untrusted jobs.
 
-The intended controller RTO is four hours and configuration/history RPO is 24 hours; see [recovery-targets.md](../recovery-targets.md). Back up original credential encryption material/signing keys and retained release/evidence artifacts independently; regenerate neither during ordinary recovery. Count-based build retention does not guarantee the 35-day artifact policy. This remains a runbook until an isolated controller restore is measured.
+Target controller RTO is four hours; config/history RPO is 24 hours. Count-based
+build retention does not guarantee the 35-day artifact policy. Registry images
+and Git-pinned chart packages must survive the Jenkins outage. There are no custom
+artifact/evidence signing keys in the simplified setup. Keep session/TLS trust
+keys independently backed up. Acceptance requires a measured controller restore.

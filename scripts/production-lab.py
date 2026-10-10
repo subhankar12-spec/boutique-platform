@@ -379,7 +379,7 @@ def export_verifier(environment, duration='24h'):
 def validate_release_images(rendered, *, monitoring=False):
     images = re.findall(r'^\s*image:\s*([^\s]+)', rendered, re.M)
     applications = [i.strip('"\'') for i in images if 'ghcr.io/' in i and 'boutique-' in i]
-    expected = 1 if monitoring else len(SERVICES)
+    expected = len(applications) if monitoring and len(applications) in (0, 1) else (1 if monitoring else len(SERVICES))
     if len(applications) != expected or any(not DIGEST_IMAGE.fullmatch(i) for i in applications):
         raise ValueError('Every Boutique image must be a published immutable GHCR digest. Complete release/promotion first; bootstrap/local tags are rejected')
     return applications
@@ -454,8 +454,10 @@ def readiness(cluster, monitoring=False, environment=None):
         if any(claim.get('status', {}).get('phase') != 'Bound' for claim in claims['items']):
             raise ValueError('Monitoring persistence is not Bound')
         if cluster == 'production':
-            kube(cluster, '-n', 'monitoring', 'wait', '--for=condition=Ready', 'certificate/incident-queue-tls', '--timeout=120s', timeout=140)
-        print('PASS: monitoring Argo sync/health, component rollouts, persistent volumes and production queue certificate')
+            certificate = kube(cluster, '-n', 'monitoring', 'get', 'certificate', 'incident-queue-tls', '--ignore-not-found', '-o', 'name')
+            if certificate.strip():
+                kube(cluster, '-n', 'monitoring', 'wait', '--for=condition=Ready', 'certificate/incident-queue-tls', '--timeout=120s', timeout=140)
+        print('PASS: monitoring Argo sync/health, component rollouts, persistent volumes and optional production queue certificate')
         return
     for env in selected:
         ns = 'boutique-' + env

@@ -12,8 +12,9 @@ ROOT = Path(__file__).resolve().parents[3] / 'boutique-gitops'
 
 @unittest.skipUnless(shutil.which('helm'), 'Helm required for monitoring render checks')
 class MonitoringHelmTests(unittest.TestCase):
-    def render(self, profile, lab=False, image_values=None):
+    def render(self, profile, lab=False, image_values=None, incident=True):
         args=['helm','template','boutique-monitoring-'+profile,str(ROOT/'monitoring'),'-f',str(ROOT/'monitoring/profiles'/profile/'values.yaml')]
+        if incident:args += ['--set','incidentBridge.enabled=true']
         if lab:args += ['-f',str(ROOT/'lab-profiles/monitoring'/profile/'values.yaml')]
         if image_values:
             args += ['--set','incidentBridge.image.tag=','--set','incidentBridge.image.digest='+image_values]
@@ -26,6 +27,16 @@ class MonitoringHelmTests(unittest.TestCase):
 
     def resource(self, resources, kind, name):
         return next(d for d in resources if d['kind']==kind and d['metadata']['name']==name)
+
+    def test_default_monitoring_is_slack_only_without_incident_workers(self):
+        for profile in ('homelab','nonprod','production'):
+            resources=self.render(profile, incident=False)
+            self.assertFalse(any(d['metadata']['name'].startswith('incident-bridge') for d in resources))
+            config=yaml.safe_load(self.resource(resources,'ConfigMap','boutique-alertmanager')['data']['alertmanager.yml'])
+            self.assertEqual([r['name'] for r in config['receivers']], ['slack'])
+            deployment=self.resource(resources,'Deployment','alertmanager')
+            volume=next(v for v in deployment['spec']['template']['spec']['volumes'] if v['name']=='secrets')
+            self.assertEqual([i['key'] for i in volume['secret']['items']],['slack_webhook'])
 
     def test_profile_target_and_rbac_scopes_match(self):
         expected={'homelab':['boutique-dev'],'nonprod':['boutique-dev','boutique-staging'],'production':['boutique-production']}

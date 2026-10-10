@@ -1,12 +1,14 @@
-# Learning order
+# Operating sequence
 
-1. Run Compose, inspect the four service APIs and complete smoke tests.
-2. Set up Jenkins validation, build one service, inspect its image/SBOM and deliberately break a test.
-3. Connect trusted release publication and verify registry permissions.
-4. Run local Kubernetes, then Argo CD; deploy dev and practise rollback.
-5. Add staging, review digest promotion and record smoke evidence.
-6. Add production namespace for a homelab exercise; understand its shared-host limitations.
-7. Read/validate AWS Terraform; provision only after budget and account review.
-8. Enable monitoring and perform one controlled failure and a restore drill.
+1. Reuse the existing cluster/controller and connected private build agent.
+2. Configure the pinned shared library, three publishing credentials and Pipeline seed.
+3. Publish four tested/scanned images and charts; merge initial GitOps selections.
+4. Prepare app secrets/data; connect Argo and run functional smoke checks.
+5. Exercise one routine release and same-digest promotion.
+6. Enable monitoring/Slack and centralized logs; test one alert.
+7. Practise image/chart rollback and independent database restore.
+8. Add production isolation/HA and AWS only on a suitable host/account/budget.
 
-Avoid adding application features until the delivery path works. Deferred items include real payments, account authentication, full contract schemas, automated signed attestation verification, service mesh, distributed tracing, multi-region and sophisticated autoscaling.
+ServiceNow, untrusted PR workers, HA observability and regional recovery are
+optional extensions with their own acceptance checks. The application stays
+small; operating the delivery and recovery flow is the project focus.

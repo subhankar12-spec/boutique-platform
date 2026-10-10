@@ -39,14 +39,14 @@ Restore Redis persistence/snapshots and matching credentials where available. Va
 
 ## Recover delivery and observability
 
-Restore validation and release Jenkins controllers **separately** on isolated networks, with triggers/agents disabled initially. Follow [jenkins-recovery.md](jenkins-recovery.md), matching core/plugin locks and restoring original encrypted credential material, trusted signing/public keys, release artifacts and job definitions. Never copy release credentials to the validation controller. Validate JCasC/job integrity and scoped approvals before reconnecting agents.
+Restore the Jenkins controller with triggers/agents disabled initially. Follow [jenkins-recovery.md](jenkins-recovery.md), matching core/plugin locks and restoring original encrypted credential material, scoped credentials, release artifacts and job definitions. Never expose release credentials to untrusted build jobs. Validate JCasC/job integrity and scoped approvals before reconnecting agents.
 
 Reconcile reviewed Helm/GitOps into the intended namespaces. Preserve stable resource names, reviewed image/package digests and controller trust. Start with data health, then application services, ingress/DNS and monitoring. Restore required Grafana/Alertmanager state and monitoring credentials. Keep notifications on internal mocks during an exercise; authorize a real receiver test separately before declaring real paging operational.
 
 ## Acceptance and controlled cutover
 
 1. Check database health and recovered writes against the recorded ledger, backup boundary and migration compatibility. Record observed data loss and RPO; mark unknown if write history is unavailable.
-2. Validate Argo source/revision, native rollout health, actual image IDs and TLS. Run the complete HTTPS smoke suite against the replacement's configured origin and retain fresh evidence. Recovery can require re-verification if retained signed evidence expired.
+2. Validate Argo source/revision, native rollout health, actual image IDs and TLS. Run the complete HTTPS smoke suite against the replacement's configured origin and retain fresh evidence. Recovery can require re-verification if retained verification reports expired.
 3. Confirm checkout ownership/pricing/idempotency, Redis state, incident queue delivery/reconciliation and monitoring visibility. Check that the old system cannot keep accepting writes.
 4. Review the endpoint/DNS/secret cutover and restoration impact, then deliberately reopen traffic/writes. Do not switch DNS to an unvalidated replacement.
 5. Record service recovery time and RTO only when these acceptance checks pass and the intended traffic works. `pg_restore` completion is not end-to-end recovery.

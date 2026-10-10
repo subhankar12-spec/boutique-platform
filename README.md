@@ -1,35 +1,36 @@
-# Runtime and operating guides
+# Boutique runtime and operations
 
-**Start here:** follow the [main CI/CD-first kind deployment guide](docs/deploy-cicd-kind.md):
-clone → prepare clusters/controllers → configure Jenkins → build/publish releases →
-GitOps → Argo deployment → verification/promotion → monitoring/recovery.
+Start with [the existing Debian/kind CI/CD guide](docs/deploy-cicd-kind.md).
+The flow is reviewed main → Jenkins tests/scans/build/publish → GitOps PR →
+Helm/manifest checks and human merge → Argo CD → rollout and smoke verification.
+Promote the same image digest/chart from dev to staging to production.
 
-**Understand the architecture:** the [complete beginner guide](docs/beginner-guide.md) explains all eight repositories, the application request flow, and step-by-step Debian/Compose/existing-kind deployment. It then walks through Jenkins agents and credentials, the two-cluster dev/staging/production lab, signed releases, monitoring, AWS, troubleshooting and recovery.
+The [beginner architecture guide](docs/beginner-guide.md) explains the eight
+repos, request flow, file types and operating model. [Jenkins setup](docs/jenkins-setup.md)
+uses one controller, a private rootless build agent, a version-pinned shared
+library and a Pipeline seed. It requires no custom signing/evidence system.
 
-**Optional manual practice:** the [eight-step local kind exercise](docs/deploy-local-kind.md)
-uses locally built images and direct manifest application. It is not a prerequisite
-for the main CI/CD flow.
+For your existing `mega-local` cluster, dev uses published GHCR images, local
+PostgreSQL/Redis and loopback port 8088. Do not replace its existing controllers.
+The [manual local-image exercise](docs/deploy-local-kind.md) remains optional.
+`./scripts/local-up.sh` provides fast Compose application development.
 
-Run `./scripts/local-up.sh` for Docker Compose and functional smoke checks. Secrets and database volumes are preserved on reruns. This is the fastest application development workflow.
+[Monitoring](docs/monitoring.md) covers Prometheus, provisioned Grafana dashboards,
+Alertmanager/Slack, Loki/Alloy and optional ServiceNow. Incident workers and their
+queue are disabled by default in Kubernetes. Keep SLOs, recovery targets and
+restore drills; production availability claims require measured results.
 
-For production delivery practice on a suitable laptop or Linux VM, follow [production-lab.md](docs/production-lab.md). It creates separate nonprod and production clusters with pinned controllers, TLS, policy enforcement, read-only deployment verification and recovery drills. It uses the same reviewed image digests and Helm chart and image selections as the AWS reference. The older `homelab-up.sh` helper remains a single-cluster bootstrap exercise; the production lab is the preferred delivery path.
-
-Follow [Jenkins setup](docs/jenkins-setup.md) for the isolated controllers, initial four-service bootstrap, signed artifacts, promotion and rollback. The four application repositories and this repository's incident adapter use the shared build pipeline. GitOps changes are checked by a fixed trusted job before merge; Argo CD owns reconciliation.
-
-[Monitoring](docs/monitoring.md) includes Prometheus/Grafana, Alertmanager, Loki/Alloy, Slack preparation, ServiceNow lifecycle integration, a PostgreSQL queue for two production adapter replicas, and local notification fixtures. Live notification activation requires securely supplied credentials and the documented ServiceNow endpoint.
-
-Use `scripts/install-tools.sh` for verified Linux amd64 CLIs. Python/PyYAML are needed for manifest and delivery checks:
+The [two-cluster exercise](docs/production-lab.md) is optional on a larger host.
+AWS Terraform remains a separate reference under boutique-infrastructure, with
+VPC/EKS/managed data, ESO/IRSA, CloudWatch and CloudTrail. No paid resources are
+provisioned by the local path. Production should have separate cluster/account,
+credentials, data and backups; one laptop does not provide that isolation.
 
 ```bash
 python3 -m unittest discover -s tests/config -v
 python3 scripts/test_production_lab.py -v
-python3 tests/smoke/smoke.py
 ```
 
-See [validation.md](docs/validation.md) for what ran and what remains unverified. Kubernetes deployment needs a supported host; cloud resources and remote notifications have not been provisioned or activated here.
-
-Application delivery uses service-owned Helm charts and separate dev/staging/production values; see [Helm delivery](https://github.com/subhankar12-spec/boutique-gitops/blob/main/docs/helm-delivery.md). AWS monitoring and audit are described in [AWS observability](https://github.com/subhankar12-spec/boutique-infrastructure/blob/main/docs/aws-observability.md).
-
-Monitoring, alert lab fixtures, optional local data resources and monitoring External Secrets also use Helm charts; Argo CD, Jenkins checks and operational scripts select their reviewed values.
-
-[SLOs](docs/slo.md), [RTO/RPO targets](docs/recovery-targets.md) and the [DR runbook](docs/runbooks/disaster-recovery.md) define intended reliability and recovery acceptance. Targets are unproven until exercised; backup automation/off-host storage and regional DR remain pending.
+See [validation.md](docs/validation.md) for executed checks and live acceptance
+work. [SLOs](docs/slo.md), [RTO/RPO](docs/recovery-targets.md) and
+[DR](docs/runbooks/disaster-recovery.md) remain part of the operating model.

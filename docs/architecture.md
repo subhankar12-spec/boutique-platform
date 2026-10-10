@@ -18,27 +18,36 @@ Each row is an independent Git repository, even when checked out beside the othe
 | `boutique-orders` | Spring Boot orders, PostgreSQL and Flyway migrations |
 | `boutique-ci` | Shared Jenkins library, controller configuration, seeds and delivery jobs |
 | `boutique-infrastructure` | AWS Terraform, state bootstrap and managed-data initialization |
-| `boutique-gitops` | Argo CD Applications, Helm environment charts, release policy and monitoring manifests |
-| `boutique-platform` | Local runtime, two-cluster lab automation, smoke tests, incident adapter and runbooks |
+| `boutique-gitops` | Argo CD Applications, Helm environment charts, environment selections and monitoring manifests |
+| `boutique-platform` | Local runtime, optional two-cluster automation, smoke tests, incident adapter and runbooks |
 
 ## Delivery path
 
 ```mermaid
 flowchart LR
-  PR[Service pull request] --> Validation[Isolated validation controller]
-  Main[Reviewed service main] --> Release[Trusted build, scan and signed release]
-  Release --> DevPR[GitOps dev pull request]
-  DevPR --> Policy[Fixed signed-delivery policy check]
-  Policy --> Argo[Argo CD reconciliation]
-  Argo --> Verify[Rollout, runtime digest and HTTPS smoke verification]
-  Verify --> Staging[Same digest to staging]
-  Staging --> Approval[Production approval and reviewed GitOps change]
-  Approval --> Production[Production rollout and verification]
+  Main[Reviewed service main] --> Build[Jenkins tests, scans and publish]
+  Build --> Registry[GHCR image digest and chart]
+  Registry --> PR[GitOps PR]
+  PR --> Checks[Helm and manifest checks]
+  Checks --> Review[Independent review and merge]
+  Review --> Argo[Argo CD reconciliation]
+  Argo --> Smoke[Rollout and functional smoke]
+  Smoke --> Promotion[Same image and chart to staging, then production]
 ```
 
-The service repository uses one shared pipeline definition. On the validation controller it tests and scans without publishing. On the release controller only protected `main` builds publish the tested image and sign its release record, including scan/SBOM hashes. Subsequent promotions select that immutable digest; they do not rebuild an environment-specific image.
+One controller with zero built-in executors uses a separate private rootless
+build agent for reviewed main code. PR/fork discovery is disabled until
+untrusted execution can be isolated from publishing and deployment credentials.
+The version-pinned shared library owns tests, scanning, packaging and publication.
+Application images are selected by digest; packaged charts use source-SHA
+versions and are committed with environment selections for Argo to render.
 
-A fixed GitOps policy job loads protected tools and treats PR files as data. Staging requires recent signed verification of the same signed Helm package and image digest in dev; production requires staging evidence and a named approver. The verifier binds native Deployment/Pod measurements, Argo's actual synchronized revision and real HTTPS smoke results. Promotion and rollback share an environment lock through verification. See [Jenkins setup](jenkins-setup.md) and [release evidence](../../boutique-gitops/docs/release-evidence.md) for the trust assumptions.
+Jenkins opens deployment PRs and does not merge or deploy them. The Jenkins manifest job validate Helm/manifests; protected PR review/merge is the
+approval boundary. Reviewers confirm preceding-environment rollout/smoke
+results before staging/production promotion. That promotion copies the exact
+image and chart without rebuilding. Rollback restores previous selections from
+protected Git history through a new PR. No custom signing/evidence or aggregate
+bootstrap workflow is required. See [Jenkins setup](jenkins-setup.md).
 
 ## Environment separation
 
@@ -52,9 +61,9 @@ The two-cluster lab runs on a suitable laptop Docker host or Linux VM. It uses C
 
 ## Operations path
 
-Prometheus collects per-pod application and incident-worker metrics; Grafana provisions dashboards; Alloy ships logs to Loki. Alertmanager routes Slack notifications and critical production incidents to the ServiceNow adapter. Local exercises use internal mock receivers. Production adapter replicas share a dedicated PostgreSQL queue with leasing, retries, revision-safe acknowledgements and dead letters. The local SQLite profile remains single-worker. The queue database is separate from orders, and its availability depends on the deployed data tier.
+Prometheus collects per-pod application and incident-worker metrics; Grafana provisions dashboards; Alloy ships logs to Loki. Alertmanager routes Slack notifications by default. The optional ServiceNow adapter handles critical production incidents when explicitly enabled. Local exercises use internal mock receivers. Production adapter replicas share a dedicated PostgreSQL queue with leasing, retries, revision-safe acknowledgements and dead letters. The local SQLite profile remains single-worker. The queue database is separate from orders, and its availability depends on the deployed data tier.
 
-AWS secret delivery uses Secrets Manager/KMS and scoped External Secrets identities. Lab credentials, CA keys, verifier kubeconfigs and Jenkins signing keys live in ignored private state, with explicit operator provisioning. Do not treat these files or a successful schema check as proof of a deployed platform.
+AWS secret delivery uses Secrets Manager/KMS and scoped External Secrets identities. Lab credentials, CA keys, verifier kubeconfigs and Jenkins credentials live in ignored private state, with explicit operator provisioning. Do not treat these files or a successful schema check as proof of a deployed platform.
 
 ## Internal APIs
 

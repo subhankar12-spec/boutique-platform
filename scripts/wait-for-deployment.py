@@ -36,12 +36,12 @@ def command(arguments, timeout=30):
     return result.stdout
 
 
-def load_evidence(root):
-    source = Path(root) / 'scripts/evidence.py'
+def load_release_config(root):
+    source = Path(root) / 'scripts/release_config.py'
     if not source.is_file():
-        raise DeploymentError('Trusted GitOps evidence helper is missing')
+        raise DeploymentError('Trusted GitOps release helper is missing')
     sys.path.insert(0,str(source.parent))
-    spec = importlib.util.spec_from_file_location('boutique_wait_evidence', source)
+    spec = importlib.util.spec_from_file_location('boutique_wait_release', source)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -61,7 +61,7 @@ class TrustedHistory:
             raise DeploymentError('Full Git history is required; a shallow checkout cannot establish trusted ancestry')
         if self.git('remote', 'get-url', 'origin') != REPOSITORY:
             raise DeploymentError('Git origin does not match the approved GitOps repository')
-        self.evidence = load_evidence(self.root)
+        self.release_config = load_release_config(self.root)
         self.protected_tip = self.git('rev-parse', '--verify', 'refs/remotes/origin/main^{commit}')
         if not FULL_SHA.fullmatch(self.protected_tip):
             raise DeploymentError('A full protected origin/main revision is required')
@@ -89,7 +89,7 @@ class TrustedHistory:
 
     def match_image(self, revision):
         try:
-            selected = self.evidence.selected_image(self.root, self.service, self.environment, revision)
+            selected = self.release_config.selected_image(self.root, self.service, self.environment, revision)
         except (ValueError, OSError, KeyError, TypeError, ImportError) as error:
             raise DeploymentError('Selected service image is unavailable in trusted GitOps history') from error
         if selected != self.image:
@@ -114,7 +114,7 @@ class TrustedHistory:
 
 
 def approved_source(source, environment):
-    # Use the same exact source/value-file contract as signed evidence creation.
+    # Use the approved source/value-file contract.
     from helm_release import approved_argo_source
     try:approved_argo_source(source,environment)
     except ValueError as error:raise DeploymentError(str(error)) from error
