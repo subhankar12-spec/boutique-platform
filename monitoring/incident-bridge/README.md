@@ -39,10 +39,15 @@ Retries use exponential backoff capped at 15 minutes. After 12 failed deliveries
 ## Validation
 
 ```bash
+mkdir -p test-reports
+docker build --target test -t boutique-incident-bridge:unit-test .
+docker run --rm --user "$(id -u):$(id -g)" --env HOME=/tmp \
+  --cap-drop ALL --security-opt no-new-privileges:true \
+  --mount "type=bind,source=$(pwd)/test-reports,target=/reports" boutique-incident-bridge:unit-test
 docker build -t boutique-incident-bridge:test .
 python3 run-postgres-tests.py --image boutique-incident-bridge:test
 ```
 
-The image build runs SQLite delivery, authentication, migration and race regressions. The PostgreSQL runner starts a dedicated disposable database on an isolated Docker network, creates test-only credentials in a protected temporary directory, runs integration tests from the built image and removes only its own resources. It never connects to the orders database. Tests cover independent worker processes, locked-row skipping, concurrent resolution, lease recovery and queue deduplication. This disposable test database uses an isolated plaintext Docker network; the actual production lab database uses verified TLS.
+The separate Test stage runs SQLite delivery, authentication, migration and race regressions through `ci/test.sh`, emitting JUnit XML. The runtime image build does not execute tests. The PostgreSQL runner starts a dedicated disposable database on an isolated Docker network, creates test-only credentials in a protected temporary directory, runs integration tests from the built image and removes only its own resources. It never connects to the orders database. Tests cover independent worker processes, locked-row skipping, concurrent resolution, lease recovery and queue deduplication. This disposable test database uses an isolated plaintext Docker network; the actual production lab database uses verified TLS.
 
 For an already isolated disposable database, install `requirements.txt` with hash checking and set `TEST_QUEUE_DATABASE_URL`, then run `python -m unittest -v test_postgres`. That test truncates its `queue` table. Never point it at a deployed queue.

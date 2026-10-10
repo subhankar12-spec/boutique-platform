@@ -32,6 +32,14 @@ It is not an upgrade/replacement command for a manually created `jenkins`
 container. Back up Jenkins encrypted credentials and home before changes.
 Controller/agent artifact verification and plugin locks remain in place.
 
+## Test results plugin
+
+On an existing controller, install **JUnit** through Manage Jenkins → Plugins
+and let Jenkins resolve its dependencies. Restart when requested after builds
+finish. Do this before updating the shared-library pin: the service pipeline
+uses the `junit` step to show individual test results and history. Fresh installs
+include the reviewed plugin and dependencies in boutique-ci's checksum lock.
+
 ## Shared library and job definitions
 
 Configure the **Global Untrusted Pipeline Library** `boutique-ci`, Modern SCM/Git,

@@ -8,7 +8,7 @@ they are not part of the current source tree.
 
 | Path | Current purpose |
 | --- | --- |
-| vars/servicePipeline.groovy | Shared service quality gates and GHCR publication |
+| vars/servicePipeline.groovy | Separate Test/JUnit and Build image stages, quality gates and GHCR publication |
 | vars/releaseArtifact.groovy | Retrieve publishing artifacts for dev selection |
 | vars/gitopsPullRequest.groovy | Open a deployment PR and queue manifest validation |
 | pipelines/seed-release.Jenkinsfile | Pipeline seed invoking current Job DSL |
@@ -62,3 +62,9 @@ Superseded source/publication notes and the separate roadmap have been removed.
 The operating sequence lives in the main deployment guide; cloud test boundaries
 live in validation.md. Active local-image, larger-host and AWS guides describe
 optional paths and remain available alongside the primary laptop guide.
+
+Each application repository has `ci/test.sh` for its isolated test runner and a
+Dockerfile `test` target containing the required tools/dependencies. Tests execute
+in Jenkins's Test stage, not as Docker build instructions. The catalogue's small
+report converter and the optional adapter's stdlib runner emit JUnit without new
+application runtime dependencies. Test code/tools stay out of final images.

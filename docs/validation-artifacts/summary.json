@@ -9,7 +9,7 @@
   },
   "jenkins": {
     "jenkinsVersion": "2.580.1",
-    "plugins": 74,
+    "plugins": 80,
     "passed": true,
     "declarativeFiles": [
       "service-reference.Jenkinsfile",
@@ -32,6 +32,38 @@
         "building": false,
         "number": 2,
         "result": "FAILURE"
+      }
+    ],
+    "testGateBuilds": [
+      {
+        "result": "SUCCESS",
+        "tests": {
+          "_class": "hudson.tasks.junit.TestResult",
+          "failCount": 0,
+          "passCount": 1,
+          "skipCount": 0
+        },
+        "publicationReached": true
+      },
+      {
+        "result": "FAILURE",
+        "tests": {
+          "_class": "hudson.tasks.junit.TestResult",
+          "failCount": 1,
+          "passCount": 0,
+          "skipCount": 0
+        },
+        "publicationReached": false
+      },
+      {
+        "result": "UNSTABLE",
+        "tests": {
+          "_class": "hudson.tasks.junit.TestResult",
+          "failCount": 1,
+          "passCount": 0,
+          "skipCount": 0
+        },
+        "publicationReached": false
       }
     ],
     "jobDslGeneratedJobs": {
@@ -64,8 +96,49 @@
   "documentation_audit": {
     "repositories": 8,
     "markdown_files": 40,
-    "bash_examples": 98,
+    "bash_examples": 102,
     "local_and_project_links": 127,
     "errors": 0
+  },
+  "separate_test_stages": {
+    "service_suites": {
+      "frontend": {
+        "tests": 3,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "catalogue": {
+        "tests": 5,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "cart": {
+        "tests": 6,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "orders": {
+        "tests": 2,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "incident-bridge": {
+        "tests": 17,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      }
+    },
+    "intentional_failure_checks": 5,
+    "all_failed_runners_returned_nonzero": true,
+    "junit_recorded_by_native_jenkins": true,
+    "failed_and_unstable_results_block_build_and_publication": true,
+    "runtime_images_built": 5,
+    "test_containers_run_as_agent_uid": true,
+    "cloud_dependency_adaptations": "Temporary trusted CA mounts and Maven proxy/DNS configuration; TLS/hash verification retained; no runner settings committed."
   }
 }

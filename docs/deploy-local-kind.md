@@ -160,7 +160,9 @@ docker compose --env-file local/.env -f local/compose.yaml build
 ~~~
 
 **Check:** the Docker build finishes successfully. The first build downloads
-dependencies and runs application tests; Java builds can take a while.
+dependencies and packages application code; Java builds can take a while.
+Runtime image builds do not run tests. Run each service README’s isolated test
+commands first, or use Jenkins’s separate Test stage in the primary CI/CD path.
 
 Compose is used here only as a convenient build definition. You have not
 started a second copy of the app with this build command.

@@ -4,3 +4,5 @@
 !test_bridge.py
 !test_postgres.py
 !requirements.txt
+!ci/
+!ci/**

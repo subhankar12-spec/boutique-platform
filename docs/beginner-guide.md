@@ -168,7 +168,7 @@ boutique-frontend/
   tests/                 Session and metrics tests
   package.json           Node commands and project metadata
   package-lock.json      Resolved dependency lock
-  Dockerfile             Test stage and non-root runtime image
+  Dockerfile             Test environment target and non-root runtime image
   Jenkinsfile            Calls the common service pipeline
   helm/                  Kubernetes chart owned by this service
 ~~~
@@ -190,7 +190,7 @@ boutique-catalogue/
   metrics.go             Request metrics
   main_test.go           Go tests
   go.mod                 Go module metadata
-  Dockerfile             Run tests, compile, then package a small runtime
+  Dockerfile             Test environment, compilation and small runtime
   Jenkinsfile            Common pipeline with service=catalogue
   helm/                  Deployment, Service, account and optional PDB
 ~~~
@@ -209,7 +209,7 @@ boutique-cart/
   requirements.txt       Hash-locked runtime dependencies
   requirements-dev.in    Test dependency input
   requirements-dev.txt   Hash-locked test dependencies
-  Dockerfile             Dependency/test/runtime stages
+  Dockerfile             Dependency/test-environment/runtime stages
   Jenkinsfile
   helm/
 ~~~
@@ -218,9 +218,10 @@ The service uses Python/FastAPI and Redis. The hash-locked requirement files are
 important: installing different dependency versions in two environments can
 change behavior even if your application source is unchanged.
 
-The Dockerfile connects its test stage to the final build, so the normal image
-build executes the tests. You do not need to install FastAPI into Debian's system
-Python simply to deploy the image.
+The Dockerfile provides an isolated `test` target with the locked test dependencies.
+Jenkins runs that target as a container in its separate Test stage, then records
+JUnit results. A runtime image build does not execute tests. You do not need to
+install FastAPI into Debian’s system Python simply to deploy the image.
 
 ### 4.4 Orders repository
 
@@ -237,7 +238,7 @@ boutique-orders/
   certs/                 Public AWS RDS CA bundle and checksum
   scripts/fetch-rds-ca.sh
   docs/security-exceptions.md
-  Dockerfile             Maven verification and Java 21 runtime
+  Dockerfile             Maven test environment, packaging and Java 21 runtime
   Jenkinsfile
   helm/
 ~~~
@@ -379,7 +380,7 @@ optional manual exercise uses an isolated operator kubeconfig.
 
 | File/type | What to understand | Typical edit |
 | --- | --- | --- |
-| Dockerfile | Build stages, tests, final runtime, user and entry point | Update an app runtime/dependency through review |
+| Dockerfile | Build/test environments, final runtime, user and entry point | Update an app runtime/dependency through review |
 | .dockerignore | What is excluded from Docker build context | Prevent secrets/Git/cache files entering the build |
 | Jenkinsfile | Which job/library runs for this repository | Keep service entrypoints thin |
 | helm/Chart.yaml | Chart name and version metadata | Versioned service chart packaging |
@@ -984,7 +985,7 @@ and publication stages. `seed-release.Jenkinsfile` calls Job DSL to create jobs.
 Job DSL creates jobs, while Pipeline DSL describes what their builds do.
 
 The seed uses the reviewed CI commit. Main builds use protected service source.
-Publishing occurs only after Dockerfile tests, source/image scans and Helm
+Publishing occurs only after the separate Test stage, source/image scans and Helm
 validation pass. Image digests identify immutable registry content; source-SHA
 chart versions and packages identify exactly what Argo renders. Build artifacts
 preserve scan/SBOM and source information. No custom signature files are needed.

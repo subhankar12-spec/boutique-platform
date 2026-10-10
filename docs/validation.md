@@ -13,18 +13,20 @@ than mixed with current acceptance evidence.
 | Optional two-cluster helper tests | 13 safety tests passed; no live cluster created |
 | Helm/schema validation | 14 profiles, 339 resources: 327 schema-valid, zero invalid/errors, 12 explicit CRD skips |
 | Candidate-input handling | Protected validation passed with candidate scripts deliberately broken; candidate scripts were not executed, symlinks rejected and packaged chart inputs inspected |
-| Jenkins runtime | Jenkins 2.580.1 loaded all 74 checksum-locked plugins; JCasC had zero warnings |
+| Jenkins runtime | Jenkins 2.580.1 loaded all 80 checksum-locked plugins; JCasC had zero warnings |
 | Jenkins job definitions | Actual Job DSL generated nine default jobs and ten with the optional adapter enabled; main-only discovery and initial automatic-build suppression |
 | Runtime tool integrity | 7 tests passed for tool verification/install helpers |
 | Pipeline syntax | Jenkins accepted the shared service pipeline, seed, manifest validation, promotion, rollback, verifier and infrastructure definitions |
+| Separate service tests | Frontend 3, catalogue 5 (including 3 report-converter tests), cart 6, orders 2 and optional adapter 17 passed in non-root disposable test containers; all five runtime images built separately |
+| Test failure gates | Intentional failure in each runner returned nonzero with failed JUnit XML; native Jenkins recorded pass/fail/unstable fixtures and blocked image build/publication for failed or unstable tests |
 | Failure propagation | Isolated child SUCCESS propagated; an intentional child FAILURE caused parent FAILURE |
 | Alertmanager | Slack-only configuration passed native amtool validation |
-| Documentation | All eight repositories audited: 40 current Markdown files, 98 Bash examples and 127 local/project links passed |
+| Documentation | All eight repositories audited: 40 current Markdown files, 102 Bash examples and 127 local/project links passed |
 
 These tests use native Helm/schema/Jenkins tools and real temporary Git histories.
 They do not establish a live production deployment. The intentionally failing
 isolated build verifies error propagation; it is not an unresolved test failure.
-The locked plugin list includes required transitive dependencies, not 74 optional
+The locked plugin list includes required transitive dependencies, not 80 optional
 features to install separately.
 
 ## Target-host acceptance still required
@@ -64,3 +66,10 @@ The optional two-cluster exercise requires a supported Docker host, writable
 cgroups, adequate storage and at least 16 GiB RAM (24–32 recommended). Its doctor
 checks prerequisites before creating clusters. The existing 8 GiB laptop follows
 the single-cluster deployment guide, with dev first.
+
+The separate-test checks used temporary trusted CA mounts and Maven proxy/DNS
+configuration to accommodate this cloud runner. TLS and dependency checksums
+remained enabled; those runner settings are outside the repositories. The
+Jenkins test-report fixture runs only in a disposable controller, with a local
+executor enabled after the production JCasC zero-executor check. Its simulated
+build/publication markers do not publish images or run the full delivery flow.

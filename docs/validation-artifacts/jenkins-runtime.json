@@ -1,6 +1,6 @@
 {
   "jenkinsVersion": "2.580.1",
-  "plugins": 74,
+  "plugins": 80,
   "passed": true,
   "declarativeFiles": [
     "service-reference.Jenkinsfile",
@@ -23,6 +23,38 @@
       "building": false,
       "number": 2,
       "result": "FAILURE"
+    }
+  ],
+  "testGateBuilds": [
+    {
+      "result": "SUCCESS",
+      "tests": {
+        "_class": "hudson.tasks.junit.TestResult",
+        "failCount": 0,
+        "passCount": 1,
+        "skipCount": 0
+      },
+      "publicationReached": true
+    },
+    {
+      "result": "FAILURE",
+      "tests": {
+        "_class": "hudson.tasks.junit.TestResult",
+        "failCount": 1,
+        "passCount": 0,
+        "skipCount": 0
+      },
+      "publicationReached": false
+    },
+    {
+      "result": "UNSTABLE",
+      "tests": {
+        "_class": "hudson.tasks.junit.TestResult",
+        "failCount": 1,
+        "passCount": 0,
+        "skipCount": 0
+      },
+      "publicationReached": false
     }
   ],
   "jobDslGeneratedJobs": {

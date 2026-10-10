@@ -174,11 +174,12 @@ Run each `main` job, one at a time. The service workflow performs:
 1. Checkout and protected-main source check.
 2. Secret scan.
 3. Helm lint/schema validation and chart packaging.
-4. Docker build, including the tests in each service's multi-stage Dockerfile.
-5. Runtime image scan and SBOM generation.
-6. Publish the tested image and versioned chart to GHCR.
-7. Archive the image digest, source commit, scans, SBOM and chart package.
-8. When `DELIVER_TO_DEV=true`, invoke promotion to open a dev GitOps PR.
+4. Separate **Test** stage: build the test environment, execute tests and publish JUnit reports.
+5. **Build image**: build the final runtime image only after tests pass.
+6. Runtime image scan and SBOM generation.
+7. Publish the tested image and versioned chart to GHCR.
+8. Archive the image digest, source commit, scans, SBOM and chart package.
+9. When `DELIVER_TO_DEV=true`, invoke promotion to open a dev GitOps PR.
 
 The commit tag/chart version is not overwritten. A repeated source commit fails
 publication rather than silently replacing an existing release. Reuse the
