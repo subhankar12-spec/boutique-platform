@@ -9,7 +9,7 @@ than mixed with current acceptance evidence.
 
 | Check | Result and boundary |
 | --- | --- |
-| Configuration tests | 44 passed: exact image/chart promotion, rejected unsafe changes/unmerged rollback, Argo history/health checks, laptop profile and optional monitoring |
+| Configuration tests | 48 passed: secret preservation, exact image/chart promotion, rejected unsafe changes/unmerged rollback, Argo history/health checks, laptop profile and optional monitoring |
 | Optional two-cluster helper tests | 13 safety tests passed; no live cluster created |
 | Helm/schema validation | 14 profiles, 339 resources: 327 schema-valid, zero invalid/errors, 12 explicit CRD skips |
 | Candidate-input handling | Protected validation passed with candidate scripts deliberately broken; candidate scripts were not executed, symlinks rejected and packaged chart inputs inspected |
@@ -20,8 +20,9 @@ than mixed with current acceptance evidence.
 | Separate service tests | Frontend 3, catalogue 5 (including 3 report-converter tests), cart 6, orders 2 and optional adapter 17 passed in non-root disposable test containers; all five runtime images built separately |
 | Test failure gates | Intentional failure in each runner returned nonzero with failed JUnit XML; native Jenkins recorded pass/fail/unstable fixtures and blocked image build/publication for failed or unstable tests |
 | Failure propagation | Isolated child SUCCESS propagated; an intentional child FAILURE caused parent FAILURE |
-| Alertmanager | Slack-only configuration passed native amtool validation |
-| Documentation | All eight repositories audited: 41 current Markdown files, 103 Bash examples and 162 local/project links passed |
+| Monitoring configuration | Native promtool, amtool and Alloy passed for Compose and six actual Helm variants (three profiles, Slack-only/incident-enabled), including rules and routing |
+| Platform audit | 82 retained files inventoried; 17 adapter unit tests, 2 mock-contract tests and 5 real isolated PostgreSQL checks passed |
+| Documentation | All eight repositories audited: 42 current Markdown files, 103 Bash examples and 247 local/project links passed |
 
 These tests use native Helm/schema/Jenkins tools and real temporary Git histories.
 They do not establish a live production deployment. The intentionally failing
@@ -73,3 +74,9 @@ remained enabled; those runner settings are outside the repositories. The
 Jenkins test-report fixture runs only in a disposable controller, with a local
 executor enabled after the production JCasC zero-executor check. Its simulated
 build/publication markers do not publish images or run the full delivery flow.
+
+The [platform file audit](file-audit.md) records removed unused copies, optional
+components and the local secret helper correction. Its checks did not rerun the
+live application journey or deploy a Kubernetes cluster. The existing service
+image/build checks above predate this operational cleanup; application code and
+Dockerfiles were unchanged by the platform audit.

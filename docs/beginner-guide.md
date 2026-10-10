@@ -365,7 +365,7 @@ boutique-platform/
   tests/config/            Delivery/rendering/policy tests
   monitoring/              Compose monitoring, rules, dashboard, adapter
   docs/                    Architecture, operations and recovery guides
-  workspace/               Eight-repository inventory and editor template
+  workspace/               Eight-repository editor template
   Jenkinsfile              Builds the incident adapter as a deployable service
 ~~~
 

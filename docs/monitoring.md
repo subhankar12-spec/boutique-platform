@@ -72,3 +72,8 @@ Promtool rule tests verify shared-queue aggregation, backlog thresholds, dead le
 ## Reliability objectives
 
 See [slo.md](slo.md) for request eligibility, frontend-only PromQL, error budgets and measurement limits. Current seven-day Prometheus retention cannot support a complete 30-day scorecard. Automated SLO burn-rate alerts and continuous external journey probes remain future activation work.
+
+Run `bash monitoring/validate.sh` with Helm, PyYAML and Docker available to check
+Compose configuration and all three actual Kubernetes Helm profiles, including
+Slack-only defaults and optional incident routing. Kubernetes configuration is
+maintained in boutique-gitops; this repo holds no extra Kubernetes config copies.

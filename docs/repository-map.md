@@ -68,3 +68,7 @@ Dockerfile `test` target containing the required tools/dependencies. Tests execu
 in Jenkins's Test stage, not as Docker build instructions. The catalogue's small
 report converter and the optional adapter's stdlib runner emit JUnit without new
 application runtime dependencies. Test code/tools stay out of final images.
+
+The [complete platform audit](file-audit.md) lists each retained file. Kubernetes
+monitoring copies were removed from platform; native validation reads the GitOps
+Helm chart directly. Compose monitoring remains a separate local runtime.

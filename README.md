@@ -37,3 +37,6 @@ work. [SLOs](docs/slo.md), [RTO/RPO](docs/recovery-targets.md) and
 
 See the [current CI/platform file map](docs/repository-map.md) for core files, optional
 exercises and the removed legacy components.
+
+See the [file-by-file platform audit](docs/file-audit.md) for every retained file,
+its purpose, optional paths and validated cleanup.

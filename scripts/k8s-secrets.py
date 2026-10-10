@@ -1,18 +1,59 @@
 #!/usr/bin/env python3
-"""Generate secrets in Kubernetes directly; never write secret values into Git."""
-import json,secrets,subprocess,sys
-namespace='boutique-'+(sys.argv[1] if len(sys.argv)>1 else 'dev')
-assert namespace in ['boutique-dev','boutique-staging','boutique-production']
-subprocess.run(['kubectl','create','namespace',namespace],capture_output=True)
-def exists(name):return subprocess.run(['kubectl','-n',namespace,'get','secret',name],capture_output=True).returncode==0
-def apply(name,data):
-    if exists(name):print('Preserved',name);return
-    doc={'apiVersion':'v1','kind':'Secret','metadata':{'name':name,'namespace':namespace},'type':'Opaque','stringData':data}
-    subprocess.run(['kubectl','apply','-f','-'],input=json.dumps(doc),text=True,check=True,stdout=subprocess.DEVNULL)
-    print('Created',name)
-password=secrets.token_hex(32)
-if not exists('redis-auth') and exists('cart-redis'):raise SystemExit('Partial Redis secret state: restore matching credentials before retrying')
-if exists('redis-auth') and not exists('cart-redis'):raise SystemExit('Partial Redis secret state: restore matching credentials before retrying')
-apply('redis-auth',{'password':password});apply('cart-redis',{'url':'redis://:'+password+'@redis:6379/0'})
-apply('frontend-session',{'secret':secrets.token_hex(32)})
-apply('orders-database',{'url':'jdbc:postgresql://postgres:5432/boutique','username':'boutique','password':secrets.token_hex(32)})
+"""Create missing local Kubernetes credentials; preserve existing secrets."""
+import argparse
+import base64
+import json
+import secrets
+import subprocess
+
+
+def kubectl(*arguments, document=None):
+    return subprocess.run(['kubectl', *arguments],
+                          input=None if document is None else json.dumps(document),
+                          text=True, capture_output=True, check=True).stdout
+
+
+def provision(environment):
+    if environment not in ('dev', 'staging', 'production'):
+        raise ValueError('Select dev, staging or production')
+    namespace = 'boutique-' + environment
+    # --ignore-not-found distinguishes absence from API/auth failures.
+    if not kubectl('get', 'namespace', namespace, '--ignore-not-found', '-o', 'name').strip():
+        kubectl('create', 'namespace', namespace)
+    current = json.loads(kubectl('-n', namespace, 'get', 'secrets', '-o', 'json'))
+    existing = {item['metadata']['name'] for item in current['items']}
+    if ('redis-auth' in existing) != ('cart-redis' in existing):
+        raise ValueError('Partial Redis secret state: restore matching credentials before retrying')
+    password = secrets.token_hex(32)
+    wanted = {
+        'redis-auth': {'password': password},
+        'cart-redis': {'url': 'redis://:' + password + '@redis:6379/0'},
+        'frontend-session': {'secret': secrets.token_hex(32)},
+        'orders-database': {'url': 'jdbc:postgresql://postgres:5432/boutique',
+                            'username': 'boutique', 'password': secrets.token_hex(32)},
+    }
+    for name, values in wanted.items():
+        if name in existing:
+            print('Preserved', name)
+            continue
+        document = {'apiVersion': 'v1', 'kind': 'Secret',
+                    'metadata': {'name': name, 'namespace': namespace}, 'type': 'Opaque',
+                    'data': {key: base64.b64encode(value.encode()).decode() for key, value in values.items()}}
+        # Create cannot overwrite a secret created concurrently by another operator.
+        kubectl('create', '-f', '-', document=document)
+        print('Created', name)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('environment', choices=('dev', 'staging', 'production'), nargs='?', default='dev')
+    args = parser.parse_args()
+    try:
+        provision(args.environment)
+    except (subprocess.CalledProcessError, OSError, ValueError, KeyError):
+        # Native errors may contain object values; report no stderr or input body.
+        parser.exit(1, 'Secret setup stopped; check cluster access and existing credential state locally.\n')
+
+
+if __name__ == '__main__':
+    main()
