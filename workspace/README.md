@@ -37,14 +37,14 @@ No custom signing/evidence workflow or aggregate bootstrap job is required.
 
 ## Evidence and access limitations
 
-The app's functional smoke checks, real database/client TLS tests, queue integration tests, immutable promotion/rollback tests and actual Jenkins controller/plugin/pipeline checks have been exercised. See [validation](boutique-platform/docs/validation.md) for their scope.
+The app's functional smoke checks, real database/client TLS tests, queue integration tests, immutable promotion/rollback tests and actual Jenkins controller/plugin/pipeline checks have been exercised. See [validation](https://github.com/subhankar12-spec/boutique-platform/blob/main/docs/validation.md) for their scope.
 
 This cloud runner cannot validate the full two-cluster deployment: it has insufficient Docker disk space and restricted cgroups. All eight repositories are published under `subhankar12-spec`, with their `main` commits verified against GitHub. The owner created the repositories and granted the integration access; repository creation from this runner remains unavailable. Local source/Git archives preserve the work. Saving cloud environment configuration does not push repositories or activate the environment draft.
 
-Start with [existing Debian/kind deployment](boutique-platform/docs/deploy-cicd-kind.md), [Jenkins setup](boutique-platform/docs/jenkins-setup.md), [Helm delivery](boutique-gitops/docs/helm-delivery.md), and the [AWS infrastructure guide](boutique-infrastructure/README.md).
+Start with [existing Debian/kind deployment](https://github.com/subhankar12-spec/boutique-platform/blob/main/docs/deploy-cicd-kind.md), [Jenkins setup](https://github.com/subhankar12-spec/boutique-platform/blob/main/docs/jenkins-setup.md), [Helm delivery](https://github.com/subhankar12-spec/boutique-gitops/blob/main/docs/helm-delivery.md), and the [AWS infrastructure guide](https://github.com/subhankar12-spec/boutique-infrastructure/blob/main/README.md).
 
 Application charts and AWS telemetry: see `boutique-gitops/docs/helm-delivery.md` and `boutique-infrastructure/docs/aws-observability.md`.
 
 Monitoring, alert lab fixtures, optional local data resources and monitoring External Secrets also use Helm charts; Argo CD, Jenkins checks and operational scripts select their reviewed values.
 
-Reliability policies: [SLOs](boutique-platform/docs/slo.md), [RTO/RPO targets](boutique-platform/docs/recovery-targets.md) and the [DR runbook](boutique-platform/docs/runbooks/disaster-recovery.md). These define targets and acceptance; full disaster recovery remains untested.
+Reliability policies: [SLOs](https://github.com/subhankar12-spec/boutique-platform/blob/main/docs/slo.md), [RTO/RPO targets](https://github.com/subhankar12-spec/boutique-platform/blob/main/docs/recovery-targets.md) and the [DR runbook](https://github.com/subhankar12-spec/boutique-platform/blob/main/docs/runbooks/disaster-recovery.md). These define targets and acceptance; full disaster recovery remains untested.
