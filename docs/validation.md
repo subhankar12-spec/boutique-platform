@@ -13,7 +13,7 @@ than mixed with current acceptance evidence.
 | Optional two-cluster helper tests | 13 safety tests passed; no live cluster created |
 | Helm/schema validation | 14 profiles, 339 resources: 327 schema-valid, zero invalid/errors, 12 explicit CRD skips |
 | Candidate-input handling | Protected validation passed with candidate scripts deliberately broken; candidate scripts were not executed, symlinks rejected and packaged chart inputs inspected |
-| Jenkins runtime | Jenkins 2.580.1 loaded all 80 checksum-locked plugins; JCasC had zero warnings |
+| Jenkins runtime | Jenkins 2.580.1 loaded all 79 checksum-locked plugins; JCasC had zero warnings |
 | Jenkins job definitions | Actual Job DSL generated nine default jobs and ten with the optional adapter enabled; main-only discovery and initial automatic-build suppression |
 | Runtime tool integrity | 7 tests passed for tool verification/install helpers |
 | Pipeline syntax | Jenkins accepted the shared service pipeline, seed, manifest validation, promotion, rollback, verifier and infrastructure definitions |
@@ -21,12 +21,12 @@ than mixed with current acceptance evidence.
 | Test failure gates | Intentional failure in each runner returned nonzero with failed JUnit XML; native Jenkins recorded pass/fail/unstable fixtures and blocked image build/publication for failed or unstable tests |
 | Failure propagation | Isolated child SUCCESS propagated; an intentional child FAILURE caused parent FAILURE |
 | Alertmanager | Slack-only configuration passed native amtool validation |
-| Documentation | All eight repositories audited: 40 current Markdown files, 102 Bash examples and 127 local/project links passed |
+| Documentation | All eight repositories audited: 41 current Markdown files, 103 Bash examples and 162 local/project links passed |
 
 These tests use native Helm/schema/Jenkins tools and real temporary Git histories.
 They do not establish a live production deployment. The intentionally failing
 isolated build verifies error propagation; it is not an unresolved test failure.
-The locked plugin list includes required transitive dependencies, not 80 optional
+The locked plugin list includes required transitive dependencies, not 79 optional
 features to install separately.
 
 ## Target-host acceptance still required

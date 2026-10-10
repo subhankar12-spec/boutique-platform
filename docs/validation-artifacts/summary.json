@@ -9,7 +9,7 @@
   },
   "jenkins": {
     "jenkinsVersion": "2.580.1",
-    "plugins": 80,
+    "plugins": 79,
     "passed": true,
     "declarativeFiles": [
       "service-reference.Jenkinsfile",
@@ -95,9 +95,9 @@
   },
   "documentation_audit": {
     "repositories": 8,
-    "markdown_files": 40,
-    "bash_examples": 102,
-    "local_and_project_links": 127,
+    "markdown_files": 41,
+    "bash_examples": 103,
+    "local_and_project_links": 162,
     "errors": 0
   },
   "separate_test_stages": {
@@ -140,5 +140,18 @@
     "runtime_images_built": 5,
     "test_containers_run_as_agent_uid": true,
     "cloud_dependency_adaptations": "Temporary trusted CA mounts and Maven proxy/DNS configuration; TLS/hash verification retained; no runner settings committed."
+  },
+  "agent_tool_integrity_tests": {
+    "run": 3,
+    "passed": 3
+  },
+  "ci_repository_audit": {
+    "retained_source_files": 32,
+    "plugin_feature_roots": 8,
+    "locked_plugins": 79,
+    "missing_plugin_dependencies": 0,
+    "orphaned_plugins": 0,
+    "dockerfile_definition_checks": "passed",
+    "revised_full_images_built": false
   }
 }

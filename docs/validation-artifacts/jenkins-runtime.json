@@ -1,6 +1,6 @@
 {
   "jenkinsVersion": "2.580.1",
-  "plugins": 80,
+  "plugins": 79,
   "passed": true,
   "declarativeFiles": [
     "service-reference.Jenkinsfile",

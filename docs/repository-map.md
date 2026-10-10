@@ -18,7 +18,7 @@ they are not part of the current source tree.
 | pipelines/verify.Jenkinsfile | Optional read-only rollout/smoke verification |
 | jenkins/jobs/release.groovy | Nine default jobs; only main service branches |
 | jenkins/casc and jenkins/compose.yaml | Fresh single-controller configuration; existing installations follow the migration guide |
-| jenkins/controller and scripts/lock-plugins.py | Locked controller core/plugins and reviewed upgrade tooling |
+| jenkins/controller and jenkins/scripts/lock-plugins.py | Locked controller core/plugins and reviewed upgrade tooling |
 | jenkins/agents | Existing common inbound build-agent image and rootless setup |
 | jenkins/scripts | Tool installers, integrity tests, controller checks and local initialization |
 
