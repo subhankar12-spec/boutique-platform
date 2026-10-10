@@ -67,12 +67,12 @@ application release is running.
 | Actor | Responsibility |
 | --- | --- |
 | You, as a developer | Change application source and service-owned Helm templates through review |
-| Jenkins build job | Test/build/scan; publish the image and chart; sign release information |
+| Jenkins build job | Test/build/scan; publish the image and chart; archive checksums and scan reports |
 | Jenkins delivery job | Validate releases and prepare a GitOps pull request |
 | GitHub checks/review | Enforce policy and approval before the configuration merges |
 | Argo CD | Read merged GitOps configuration and reconcile Kubernetes resources |
 | Kubernetes | Schedule Pods, restart failed containers and route traffic through Services |
-| Trusted verifier | Check the actual deployment and HTTP behavior, then sign evidence |
+| Trusted verifier | Check the actual deployment and HTTP behavior; archive rollout/smoke reports |
 | You, as an operator | Configure identities, bootstrap foundations, investigate alerts and exercise recovery |
 
 This division explains why there are many files. A Dockerfile answers “how is
@@ -663,7 +663,7 @@ releases first and lets Argo deploy the reviewed GitOps baseline.
 
 This is the beginner exercise. It deliberately uses locally built images and
 directly applied Helm-rendered manifests. It does not establish production
-release evidence, Argo Applications, TLS ingress or the two-cluster boundary.
+release publication, Argo Applications, TLS ingress or the two-cluster boundary.
 
 ### 9.1 Select an existing cluster or create a dedicated one
 
@@ -937,7 +937,7 @@ The service packages are committed under charts/ after verification.
 flowchart LR
     Source["Service repo: code + helm"] --> Jenkins["Tested release build"]
     Jenkins --> Image["GHCR image digest"]
-    Jenkins --> Chart["Signed chart package identity"]
+    Jenkins --> Chart["Versioned chart package and checksum"]
     Chart --> Git["GitOps: charts/*.tgz"]
     Image --> Values["GitOps: releases.yaml"]
     Git --> Render["Helm rendering"]
@@ -951,6 +951,7 @@ flowchart LR
 | Profile | Value files added to the environment chart | Intended runtime |
 | --- | --- | --- |
 | cloud | values.yaml, releases.yaml | Managed cloud services |
+| laptop | values.yaml, releases.yaml, laptop-profiles/dev/values.yaml | Existing Debian/kind dev with GHCR image digests |
 | lab | values.yaml, releases.yaml, lab-profiles/<env>/values.yaml | Two-cluster TLS kind lab |
 | local | values.yaml, releases.yaml, homelab/<env>/values.yaml | Introductory locally loaded images/data |
 
@@ -972,7 +973,7 @@ history and Argo status for the full delivery track; helm rollback is not this
 project's application recovery workflow.
 
 Read [Helm delivery](https://github.com/subhankar12-spec/boutique-gitops/blob/main/docs/helm-delivery.md)
-when you are ready to understand chart checksums and promotion records.
+when you are ready to understand chart checksums and immutable promotion.
 
 ## 12. Understand current Jenkins and GitOps delivery
 
@@ -1232,7 +1233,8 @@ queue PostgreSQL is still single replica.
 Complete the relevant application baselines first. Nonprod monitoring expects
 dev and staging; production monitoring expects production.
 
-1. Run boutique-platform/main on the release controller. Its shared service
+1. Enable `ENABLE_INCIDENT_BRIDGE_BUILD=true` in the Pipeline seed, then run
+   boutique-platform/main on the trusted build agent. Its shared service
    pipeline builds **incident-bridge**, including real PostgreSQL integration.
 2. Inspect the successful published release and capture the image digest.
 3. Open a reviewed GitOps PR changing the adapter image values in
@@ -1258,7 +1260,7 @@ receiver fixtures and local data/TLS settings. Changing the image is a reviewed
 monitoring GitOps change; the application promote job accepts only the four
 application services.
 
-After the policy check, CODEOWNER review and merge:
+After manifest validation, CODEOWNER review and merge:
 
 ~~~bash
 git -C "$BOUTIQUE_ROOT/boutique-gitops" pull --ff-only origin main
@@ -1656,8 +1658,7 @@ with their data to another worker. Do not begin by deleting PVCs/namespaces.
 | Session signing keys | Access to users' existing sessions/order history |
 | CA private keys and matching trust | Continuity of verified lab certificates |
 | Jenkins home volumes | Credentials encryption material, history and job state |
-| Artifact/evidence signing keys | Future signatures and trust continuity |
-| Accepted release/chart/evidence artifacts | Reconstruct and prove a known-good release |
+| Published images, packaged charts and rollout/smoke reports | Reconstruct and verify a known-good release |
 | Terraform state and access | Managed-resource ownership and generated sensitive values |
 | Grafana storage / Alertmanager silences | Runtime admin state and maintenance context |
 

@@ -8,7 +8,7 @@ A working four-service ecommerce app with Jenkins, Kubernetes GitOps, monitoring
 | boutique-catalogue | Go product API |
 | boutique-cart | Python/FastAPI carts backed by Redis |
 | boutique-orders | Java/Spring Boot orders backed by PostgreSQL |
-| boutique-ci | Jenkins shared library, trusted pipelines, controllers and agents |
+| boutique-ci | Jenkins shared library, shared pipelines, controller and agents |
 | boutique-infrastructure | Terraform AWS infrastructure and database bootstrap |
 | boutique-gitops | Helm environment charts, Argo CD, policies and monitoring |
 | boutique-platform | Local runtime, production lab, integration checks and runbooks |
@@ -39,7 +39,11 @@ No custom signing/evidence workflow or aggregate bootstrap job is required.
 
 The app's functional smoke checks, real database/client TLS tests, queue integration tests, immutable promotion/rollback tests and actual Jenkins controller/plugin/pipeline checks have been exercised. See [validation](https://github.com/subhankar12-spec/boutique-platform/blob/main/docs/validation.md) for their scope.
 
-This cloud runner cannot validate the full two-cluster deployment: it has insufficient Docker disk space and restricted cgroups. All eight repositories are published under `subhankar12-spec`, with their `main` commits verified against GitHub. The owner created the repositories and granted the integration access; repository creation from this runner remains unavailable. Local source/Git archives preserve the work. Saving cloud environment configuration does not push repositories or activate the environment draft.
+Cloud component validation does not prove a complete Jenkins/GHCR/Argo delivery
+or the optional two-cluster deployment. Run live acceptance on the target host,
+using the current validation guide above. Published Git source and local source
+archives do not back up databases, secrets or Jenkins state. Saving cloud
+environment configuration does not push source or execute a deployment.
 
 Start with [existing Debian/kind deployment](https://github.com/subhankar12-spec/boutique-platform/blob/main/docs/deploy-cicd-kind.md), [Jenkins setup](https://github.com/subhankar12-spec/boutique-platform/blob/main/docs/jenkins-setup.md), [Helm delivery](https://github.com/subhankar12-spec/boutique-gitops/blob/main/docs/helm-delivery.md), and the [AWS infrastructure guide](https://github.com/subhankar12-spec/boutique-infrastructure/blob/main/README.md).
 

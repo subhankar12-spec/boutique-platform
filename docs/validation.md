@@ -19,7 +19,7 @@ than mixed with current acceptance evidence.
 | Pipeline syntax | Jenkins accepted the shared service pipeline, seed, manifest validation, promotion, rollback, verifier and infrastructure definitions |
 | Failure propagation | Isolated child SUCCESS propagated; an intentional child FAILURE caused parent FAILURE |
 | Alertmanager | Slack-only configuration passed native amtool validation |
-| Documentation | Shell examples passed Bash syntax; local file links and deployment anchors checked |
+| Documentation | All eight repositories audited: 40 current Markdown files, 98 Bash examples and 127 local/project links passed |
 
 These tests use native Helm/schema/Jenkins tools and real temporary Git histories.
 They do not establish a live production deployment. The intentionally failing
@@ -54,3 +54,13 @@ host, sufficient memory/storage, policy-capable networking and live verification
 off-host storage, HA and regional recovery remain separate operating work until
 implemented and measured. GitHub source and same-host Git bundles/ZIPs preserve
 source but do not recover database volumes, secrets or Jenkins state.
+
+## Cloud workspace boundary
+
+Use the cloud checkout for source review, component tests, native Helm/schema
+checks and isolated Jenkins validation. It is a different machine from the
+Debian laptop; cloud commands do not operate that laptop's Jenkins or kind.
+The optional two-cluster exercise requires a supported Docker host, writable
+cgroups, adequate storage and at least 16 GiB RAM (24–32 recommended). Its doctor
+checks prerequisites before creating clusters. The existing 8 GiB laptop follows
+the single-cluster deployment guide, with dev first.

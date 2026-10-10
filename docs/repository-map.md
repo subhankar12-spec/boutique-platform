@@ -43,7 +43,7 @@ name would break the verified Jenkins installation.
 | local/production-lab and production-lab*.py | Optional larger-host two-cluster/TLS/recovery exercise, not the existing-laptop path |
 | scripts/test_production_lab.py | Safety tests for that optional helper |
 | scripts/install-tools.sh | Verified CLI installation |
-| docs | Current architecture, deployment, observability and recovery guides |
+| docs | Current architecture, deployment, observability and recovery guides; start at deploy-cicd-kind.md |
 | docs/validation-artifacts | Current summary and current Jenkins runtime report only |
 | workspace | Eight-repo editor/overview templates |
 
@@ -57,3 +57,8 @@ The ServiceNow adapter build is opt-in in the seed with
 `ENABLE_INCIDENT_BRIDGE_BUILD=true`. If an earlier seed already created
 `boutique-platform`, disable that Jenkins job when the integration is unused;
 removedJobAction=IGNORE deliberately preserves existing jobs.
+
+Superseded source/publication notes and the separate roadmap have been removed.
+The operating sequence lives in the main deployment guide; cloud test boundaries
+live in validation.md. Active local-image, larger-host and AWS guides describe
+optional paths and remain available alongside the primary laptop guide.

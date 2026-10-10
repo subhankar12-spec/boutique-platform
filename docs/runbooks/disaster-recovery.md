@@ -46,7 +46,7 @@ Reconcile reviewed Helm/GitOps into the intended namespaces. Preserve stable res
 ## Acceptance and controlled cutover
 
 1. Check database health and recovered writes against the recorded ledger, backup boundary and migration compatibility. Record observed data loss and RPO; mark unknown if write history is unavailable.
-2. Validate Argo source/revision, native rollout health, actual image IDs and TLS. Run the complete HTTPS smoke suite against the replacement's configured origin and retain fresh evidence. Recovery can require re-verification if retained verification reports expired.
+2. Validate Argo source/revision, native rollout health, actual image IDs and TLS. Run the complete HTTPS smoke suite against the replacement's configured origin and retain fresh evidence. Rerun verification after recovery; retained reports describe the earlier deployment.
 3. Confirm checkout ownership/pricing/idempotency, Redis state, incident queue delivery/reconciliation and monitoring visibility. Check that the old system cannot keep accepting writes.
 4. Review the endpoint/DNS/secret cutover and restoration impact, then deliberately reopen traffic/writes. Do not switch DNS to an unvalidated replacement.
 5. Record service recovery time and RTO only when these acceptance checks pass and the intended traffic works. `pg_restore` completion is not end-to-end recovery.

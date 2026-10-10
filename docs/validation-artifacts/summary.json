@@ -60,5 +60,12 @@
   "runtime_tool_integrity_tests": {
     "run": 7,
     "passed": 7
+  },
+  "documentation_audit": {
+    "repositories": 8,
+    "markdown_files": 40,
+    "bash_examples": 98,
+    "local_and_project_links": 127,
+    "errors": 0
   }
 }
