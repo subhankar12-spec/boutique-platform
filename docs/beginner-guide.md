@@ -1454,18 +1454,30 @@ for that optional layout. Native agents on dedicated VMs avoid this mismatch.
 
 The seed is a job that creates the other Jenkins jobs from reviewed Groovy DSL.
 
-For each controller:
+For the release controller, use a version-controlled Pipeline seed:
 
 1. Add its read-only github-read credential, described in chapter 14.
-2. Create a seed Freestyle job through the Jenkins UI.
-3. Restrict it to an appropriate trusted node. The validation seed definition
-   must also be operator-reviewed; arbitrary PRs must not rewrite the seed.
-4. Configure Git SCM to boutique-ci, branch main, using github-read.
-5. Add **Process Job DSLs**, loading jenkins/jobs/validation.groovy on validation
-   or jenkins/jobs/release.groovy on release.
-6. Review the definition and any necessary script approvals before running it.
+2. Create a **Pipeline** job named boutique-seed-release through the Jenkins UI.
+   If a Freestyle seed already exists, disable it and create a new Pipeline item;
+   Jenkins does not convert job types through the ordinary configuration page.
+3. Choose **Pipeline script from SCM**, **Git**, the boutique-ci repository URL
+   and github-read. Set the branch specifier to the full reviewed commit that
+   contains pipelines/seed-release.Jenkinsfile, rather than a moving branch.
+4. Set **Script Path** to pipelines/seed-release.Jenkinsfile and save.
+   The file selects trusted-release and checks BOUTIQUE_CONTROLLER_ROLE=release.
+5. Review the checked-out DSL and any necessary script approvals before running.
    Do not approve arbitrary signatures from an untrusted job.
-7. Run the seed, inspect created jobs and manually scan the multibranch projects.
+6. Run the seed with **SUPPRESS_AUTOMATIC_BUILDS=true** (the default).
+   It creates main-only release jobs without automatically launching service
+   builds from indexing or SCM events. Manual builds remain available.
+7. After delivery credentials, GitHub protection and bootstrap are configured,
+   rerun the seed with **SUPPRESS_AUTOMATIC_BUILDS=false** to enable automatic
+   service builds. This changes trigger policy; it does not deploy an application.
+
+The separate validation controller uses the operator-reviewed
+jenkins/jobs/validation.groovy definition. Keep validation credentials and
+agents isolated from release; do not run that seed on this laptop release
+controller. The release Pipeline seed does not configure validation jobs.
 
 For a localhost-only lab, GitHub cannot reach your controller webhook.
 Start with **Scan Multibranch Pipeline Now** and explicit job runs.
